@@ -1,4 +1,5 @@
-FROM oven/bun:1 AS builder
+# 1.4.4
+FROM oven/bun@sha256:1d22548f177f4ff38e0c15baa3c2c46c6c2060ba2d1bc573bb4720b407548f1d AS builder
 WORKDIR /app
 
 COPY package.json bun.lock ./
@@ -8,7 +9,8 @@ COPY assets ./assets
 COPY src ./src
 RUN bun run build
 
-FROM oven/bun:1-slim AS runtime
+# 1.4.4-slim
+FROM oven/bun@sha256:1846adf22496bd711036aae8be147e57bdebbaea2e5264e3e0b5af1db187d9a4 AS runtime
 WORKDIR /app
 
 COPY --from=builder /app/package.json ./package.json

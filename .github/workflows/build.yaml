@@ -1,6 +1,7 @@
 name: Build
 
 on:
+  # zizmor: ignore[dangerous-triggers]
   workflow_run:
     workflows: ["Continuous Integration"]
     types: [completed]
