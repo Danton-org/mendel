@@ -25,9 +25,13 @@ A primary reference consumer is [DietIA](https://github.com/Danton-org/dietia). 
 ## Distribution & CI/CD
 
 - **Primary Distribution**: Docker container images hosted on GitHub Container Registry (`ghcr.io`).
-- **Image Building**: Use **Nix** (`pkgs.dockerTools.streamLayeredImage`) to build reproducible layered container images and **skopeo** to push them to `ghcr.io`.
+- **Docker & Docker Compose**: A `Dockerfile` and `docker-compose.yaml` are provided so users can build and run `mendel` directly with standard Docker tooling (`docker compose up -d --build`).
+
+## Nix
+
+- **Image Building**: In Nix/CI workflows, use `pkgs.dockerTools.streamLayeredImage` to build reproducible layered container images and **skopeo** to push them to `ghcr.io`.
 - **Reference Implementation**: See [any2nix](https://github.com/gbr-ufs/any2nix) for the canonical Nix flake and GitHub Actions setup using `streamLayeredImage` and `skopeo`.
-- **Nix Ad-Hoc Packages**: Tools defined in `devShells` are available in `$PATH` when the shell is active. To run a Nix package that is not in `$PATH`, use `nix run nixpkgs#<PACKAGE>`.
+- **Ad-Hoc Packages**: Tools defined in `devShells` are available in `$PATH` when the shell is active. To run a Nix package that is not in `$PATH`, use `nix run nixpkgs#<PACKAGE>`.
 
 ## Versioning & Commit Conventions
 
