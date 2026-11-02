@@ -36,7 +36,7 @@
               mkdir -p $out
               cp -r node_modules $out/
             '';
-            outputHash = "sha256-PuyhYEWxIOg9oM0wnAzZ3YxbG7MSbxGzjrsgurw2KMk=";
+            outputHash = "sha256-99VDyM0a12iKzbkCcVoGQIi0FgtqYOtARAMdn+2Rvq8=";
             outputHashMode = "recursive";
           };
         in
@@ -58,7 +58,7 @@
             installPhase = ''
               runHook preInstall
               mkdir -p $out/share/mendel $out/bin
-              cp -r src dist package.json $out/share/mendel/
+              cp -r src dist node_modules package.json $out/share/mendel/
               cat > $out/bin/mendel <<EOF
               #!${pkgs.runtimeShell}
               exec ${pkgs.bun}/bin/bun run "$out/share/mendel/src/index.ts" "\$@"

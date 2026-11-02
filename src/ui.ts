@@ -1,8 +1,10 @@
+import type { TFunction } from "i18next";
 import type { ChatMessage, InteractivePayload, MendelSettings } from "./db";
+import { getTranslator } from "./i18n";
 
-function formatTime(timestampSec: number): string {
+function formatTime(timestampSec: number, locale: string): string {
   const date = new Date(timestampSec * 1000);
-  return date.toLocaleTimeString([], {
+  return date.toLocaleTimeString(locale, {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
@@ -56,7 +58,7 @@ function renderInteractive(msgId: string, interactive: InteractivePayload): stri
   return "";
 }
 
-function renderMedia(msg: ChatMessage): string {
+function renderMedia(msg: ChatMessage, t: TFunction): string {
   if (!msg.mediaType) return "";
   const src = msg.hasMediaBlob
     ? `/media/${encodeURIComponent(msg.id)}`
@@ -64,7 +66,7 @@ function renderMedia(msg: ChatMessage): string {
   if (!src) return "";
 
   if (msg.mediaType === "image") {
-    return `<img class="message-media" src="${Bun.escapeHTML(src)}" alt="${Bun.escapeHTML(msg.mediaFilename || "Image")}" loading="lazy">`;
+    return `<img class="message-media" src="${Bun.escapeHTML(src)}" alt="${Bun.escapeHTML(msg.mediaFilename || t("imageAlt"))}" loading="lazy">`;
   }
   if (msg.mediaType === "video") {
     return `<video class="message-media" src="${Bun.escapeHTML(src)}" controls preload="metadata"></video>`;
@@ -72,25 +74,28 @@ function renderMedia(msg: ChatMessage): string {
   if (msg.mediaType === "audio") {
     return `<audio class="message-media" src="${Bun.escapeHTML(src)}" controls preload="metadata"></audio>`;
   }
-  return `<p><a class="button small border round" href="${Bun.escapeHTML(src)}" download="${Bun.escapeHTML(msg.mediaFilename || "file")}"><i>download</i><span>${Bun.escapeHTML(msg.mediaFilename || "Attachment")}</span></a></p>`;
+  return `<p><a class="button small border round" href="${Bun.escapeHTML(src)}" download="${Bun.escapeHTML(msg.mediaFilename || "file")}"><i>download</i><span>${Bun.escapeHTML(msg.mediaFilename || t("attachment"))}</span></a></p>`;
 }
 
 export function renderMessages(
   messages: ChatMessage[],
-  settings: MendelSettings
+  settings: MendelSettings,
+  t: TFunction = getTranslator()
 ): string {
   if (messages.length === 0) {
     return `
       <div class="empty-state">
         <i>chat</i>
-        <h6>No messages yet</h6>
+        <h6>${Bun.escapeHTML(t("emptyTitle"))}</h6>
         <p class="small-text">
-          Messages you send here are forwarded as Evolution API webhooks to
-          <code>${Bun.escapeHTML(settings.webhookUrl || "unconfigured")}</code>.
+          ${Bun.escapeHTML(t("emptyDescription"))}
+          <code>${Bun.escapeHTML(settings.webhookUrl || t("unconfigured"))}</code>.
         </p>
       </div>
     `;
   }
+
+  const locale = t("lang");
 
   return messages
     .map((msg) => {
@@ -102,22 +107,24 @@ export function renderMessages(
       let statusHtml = "";
       if (isOutgoing) {
         if (msg.webhookStatus === "pending") {
-          statusHtml = `<i title="Sending webhook...">schedule</i>`;
+          statusHtml = `<i title="${Bun.escapeHTML(t("webhookSending"))}">schedule</i>`;
         } else if (msg.webhookStatus === "delivered") {
-          statusHtml = `<i title="Webhook delivered">done_all</i>`;
+          statusHtml = `<i title="${Bun.escapeHTML(t("webhookDelivered"))}">done_all</i>`;
         } else if (msg.webhookStatus === "failed") {
-          const errTitle = msg.webhookError || "Webhook delivery failed";
+          const errTitle = msg.webhookError || t("webhookFailed");
           statusHtml = `
             <i class="status-error" title="${Bun.escapeHTML(errTitle)}">error</i>
-            <button type="button" class="transparent circle tiny" title="Retry webhook: ${Bun.escapeHTML(errTitle)}" hx-post="/ui/retry/${encodeURIComponent(msg.id)}" hx-target="#chat-messages" hx-swap="innerHTML">
+            <button type="button" class="transparent circle tiny" title="${Bun.escapeHTML(t("retryWebhook"))}: ${Bun.escapeHTML(errTitle)}" hx-post="/ui/retry/${encodeURIComponent(msg.id)}" hx-target="#chat-messages" hx-swap="innerHTML">
               <i>refresh</i>
             </button>
           `;
         }
       }
 
-      const editedHtml = msg.edited ? `<span>(edited)</span>` : "";
-      const mediaHtml = renderMedia(msg);
+      const editedHtml = msg.edited
+        ? `<span>${Bun.escapeHTML(t("edited"))}</span>`
+        : "";
+      const mediaHtml = renderMedia(msg, t);
       const textHtml = msg.text
         ? `<p class="message-text">${Bun.escapeHTML(msg.text)}</p>`
         : "";
@@ -134,7 +141,7 @@ export function renderMessages(
             ${interactiveHtml}
             <div class="message-meta">
               ${editedHtml}
-              <span>${Bun.escapeHTML(formatTime(msg.timestamp))}</span>
+              <span>${Bun.escapeHTML(formatTime(msg.timestamp, locale))}</span>
               ${statusHtml}
             </div>
           </div>
@@ -144,20 +151,24 @@ export function renderMessages(
     .join("\n");
 }
 
-export function renderHeaderStatus(settings: MendelSettings): string {
-  return `<span class="status-chip">Instance: <b>${Bun.escapeHTML(settings.instanceName)}</b> &bull; Webhook: <code>${Bun.escapeHTML(settings.webhookUrl || "none")}</code></span>`;
+export function renderHeaderStatus(
+  settings: MendelSettings,
+  t: TFunction = getTranslator()
+): string {
+  return `<span class="status-chip">${Bun.escapeHTML(t("instanceLabel"))}: <b>${Bun.escapeHTML(settings.instanceName)}</b> &bull; ${Bun.escapeHTML(t("webhookLabel"))}: <code>${Bun.escapeHTML(settings.webhookUrl || t("none"))}</code></span>`;
 }
 
 export function renderPage(
   messages: ChatMessage[],
-  settings: MendelSettings
+  settings: MendelSettings,
+  t: TFunction = getTranslator()
 ): string {
   return `<!doctype html>
-<html lang="en" class="light">
+<html lang="${Bun.escapeHTML(t("lang"))}" class="light">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>mendel — Evolution API Test Chat</title>
+    <title>${Bun.escapeHTML(t("pageTitle"))}</title>
     <link rel="stylesheet" href="/assets/index.css">
     <script type="module" src="/assets/index.js"></script>
   </head>
@@ -168,15 +179,15 @@ export function renderPage(
           <i>forum</i>
           <div class="max">
             <h6 class="small no-margin">mendel</h6>
-            <div id="header-status">${renderHeaderStatus(settings)}</div>
+            <div id="header-status">${renderHeaderStatus(settings, t)}</div>
           </div>
-          <button type="button" class="circle transparent" title="Clear conversation" hx-post="/ui/clear" hx-target="#chat-messages" hx-swap="innerHTML">
+          <button type="button" class="circle transparent" title="${Bun.escapeHTML(t("clearConversation"))}" hx-post="/ui/clear" hx-target="#chat-messages" hx-swap="innerHTML">
             <i>delete_sweep</i>
           </button>
-          <button type="button" class="circle transparent" title="Toggle theme" onclick="window.toggleTheme()">
+          <button type="button" class="circle transparent" title="${Bun.escapeHTML(t("toggleTheme"))}" onclick="window.toggleTheme()">
             <i id="theme-icon">dark_mode</i>
           </button>
-          <button type="button" class="circle transparent" title="Webhook & Instance Settings" data-ui="#settings-dialog">
+          <button type="button" class="circle transparent" title="${Bun.escapeHTML(t("settingsTitle"))}" data-ui="#settings-dialog">
             <i>settings</i>
           </button>
         </nav>
@@ -190,16 +201,16 @@ export function renderPage(
           hx-trigger="mendel:refresh from:body"
           hx-swap="innerHTML"
         >
-          ${renderMessages(messages, settings)}
+          ${renderMessages(messages, settings, t)}
         </div>
       </main>
 
       <footer class="chat-composer">
         <div id="media-preview-bar" class="media-preview-bar">
-          <img id="media-preview-thumb" class="media-preview-thumb" alt="Preview" style="display: none;">
+          <img id="media-preview-thumb" class="media-preview-thumb" alt="${Bun.escapeHTML(t("previewAlt"))}" style="display: none;">
           <i id="media-preview-icon">attach_file</i>
           <span id="media-preview-name" class="max small-text"></span>
-          <button type="button" class="circle transparent small" onclick="window.clearMediaSelection()" title="Remove attachment">
+          <button type="button" class="circle transparent small" onclick="window.clearMediaSelection()" title="${Bun.escapeHTML(t("removeAttachment"))}">
             <i>close</i>
           </button>
         </div>
@@ -223,7 +234,7 @@ export function renderPage(
             type="button"
             class="circle transparent"
             onclick="document.getElementById('media-input').click()"
-            title="Attach image or video"
+            title="${Bun.escapeHTML(t("attachMedia"))}"
           >
             <i>attach_file</i>
           </button>
@@ -232,11 +243,11 @@ export function renderPage(
               type="text"
               id="message-text-input"
               name="text"
-              placeholder="Type a message or caption..."
+              placeholder="${Bun.escapeHTML(t("messagePlaceholder"))}"
               autocomplete="off"
             >
           </div>
-          <button type="submit" class="circle primary" title="Send message">
+          <button type="submit" class="circle primary" title="${Bun.escapeHTML(t("sendMessage"))}">
             <i>send</i>
           </button>
         </form>
@@ -244,7 +255,7 @@ export function renderPage(
     </div>
 
     <dialog id="settings-dialog" class="round medium-width">
-      <h5>Configuration</h5>
+      <h5>${Bun.escapeHTML(t("configuration"))}</h5>
       <form
         hx-post="/ui/settings"
         hx-target="#header-status"
@@ -253,28 +264,28 @@ export function renderPage(
       >
         <div class="field label border round">
           <input type="url" name="webhookUrl" value="${Bun.escapeHTML(settings.webhookUrl)}" required>
-          <label>Target Webhook URL</label>
-          <span class="helper">URL where MESSAGES_UPSERT payloads are sent (e.g. http://dietia:8000/whatsapp)</span>
+          <label>${Bun.escapeHTML(t("webhookUrlField"))}</label>
+          <span class="helper">${Bun.escapeHTML(t("webhookUrlHelper"))}</span>
         </div>
         <div class="field label border round">
           <input type="text" name="instanceName" value="${Bun.escapeHTML(settings.instanceName)}" required>
-          <label>Evolution Instance Name</label>
+          <label>${Bun.escapeHTML(t("instanceNameField"))}</label>
         </div>
         <div class="field label border round">
           <input type="text" name="apiKey" value="${Bun.escapeHTML(settings.apiKey)}">
-          <label>API Key (apikey / x-api-key)</label>
+          <label>${Bun.escapeHTML(t("apiKeyField"))}</label>
         </div>
         <div class="field label border round">
           <input type="text" name="senderNumber" value="${Bun.escapeHTML(settings.senderNumber)}" required>
-          <label>Simulated Sender Phone Number</label>
+          <label>${Bun.escapeHTML(t("senderNumberField"))}</label>
         </div>
         <div class="field label border round">
           <input type="text" name="pushName" value="${Bun.escapeHTML(settings.pushName)}" required>
-          <label>Sender Push Name</label>
+          <label>${Bun.escapeHTML(t("pushNameField"))}</label>
         </div>
         <nav class="right-align no-space">
-          <button type="button" class="transparent link" data-ui="#settings-dialog">Cancel</button>
-          <button type="submit" class="primary round">Save</button>
+          <button type="button" class="transparent link" data-ui="#settings-dialog">${Bun.escapeHTML(t("cancel"))}</button>
+          <button type="submit" class="primary round">${Bun.escapeHTML(t("save"))}</button>
         </nav>
       </form>
     </dialog>

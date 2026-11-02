@@ -5,6 +5,7 @@ import {
   type MediaType,
   MendelStore,
 } from "./db";
+import { getTranslator } from "./i18n";
 import { renderHeaderStatus, renderMessages, renderPage } from "./ui";
 import { dispatchWebhook, type InteractiveReplyMeta } from "./webhook";
 
@@ -248,7 +249,11 @@ export function createMendelServer(options: ServerOptions = {}) {
             });
           }
           return htmlResponse(
-            renderPage(store.listMessages(), store.getSettings())
+            renderPage(
+              store.listMessages(),
+              store.getSettings(),
+              getTranslator(req)
+            )
           );
         },
       },
@@ -355,9 +360,13 @@ export function createMendelServer(options: ServerOptions = {}) {
       },
 
       "/ui/messages": {
-        GET: () =>
+        GET: (req) =>
           htmlResponse(
-            renderMessages(store.listMessages(), store.getSettings())
+            renderMessages(
+              store.listMessages(),
+              store.getSettings(),
+              getTranslator(req)
+            )
           ),
       },
 
@@ -367,6 +376,7 @@ export function createMendelServer(options: ServerOptions = {}) {
           const text = String(form.get("text") || "").trim();
           const fileEntry = form.get("media");
           const settings = store.getSettings();
+          const t = getTranslator(req);
 
           let mediaType: MediaType | null = null;
           let mediaMimetype: string | null = null;
@@ -382,7 +392,7 @@ export function createMendelServer(options: ServerOptions = {}) {
 
           if (!text && !mediaData) {
             return htmlResponse(
-              renderMessages(store.listMessages(), settings)
+              renderMessages(store.listMessages(), settings, t)
             );
           }
 
@@ -404,7 +414,7 @@ export function createMendelServer(options: ServerOptions = {}) {
           void dispatchWebhook(store, msg.id, origin, bumpVersion);
 
           return htmlResponse(
-            renderMessages(store.listMessages(), settings)
+            renderMessages(store.listMessages(), settings, t)
           );
         },
       },
@@ -447,7 +457,11 @@ export function createMendelServer(options: ServerOptions = {}) {
           void dispatchWebhook(store, msg.id, origin, bumpVersion, replyMeta);
 
           return htmlResponse(
-            renderMessages(store.listMessages(), settings)
+            renderMessages(
+              store.listMessages(),
+              settings,
+              getTranslator(req)
+            )
           );
         },
       },
@@ -462,17 +476,25 @@ export function createMendelServer(options: ServerOptions = {}) {
           void dispatchWebhook(store, id, origin, bumpVersion);
 
           return htmlResponse(
-            renderMessages(store.listMessages(), store.getSettings())
+            renderMessages(
+              store.listMessages(),
+              store.getSettings(),
+              getTranslator(req)
+            )
           );
         },
       },
 
       "/ui/clear": {
-        POST: () => {
+        POST: (req) => {
           store.clearMessages();
           bumpVersion();
           return htmlResponse(
-            renderMessages(store.listMessages(), store.getSettings())
+            renderMessages(
+              store.listMessages(),
+              store.getSettings(),
+              getTranslator(req)
+            )
           );
         },
       },
@@ -498,7 +520,7 @@ export function createMendelServer(options: ServerOptions = {}) {
               : undefined,
           });
           bumpVersion();
-          return htmlResponse(renderHeaderStatus(updated));
+          return htmlResponse(renderHeaderStatus(updated, getTranslator(req)));
         },
       },
 

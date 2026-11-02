@@ -241,4 +241,30 @@ describe("mendel server", () => {
     expect(uiHtml).toContain("Gráfico semanal");
     expect(uiHtml).toContain("confirm_yes");
   });
+
+  test("localizes UI in en-US, pt-BR, and fr-FR via Accept-Language", async () => {
+    const enRes = await fetch(mendel.server.url.origin, {
+      headers: { "Accept-Language": "en-US,en;q=0.9" },
+    });
+    const enHtml = await enRes.text();
+    expect(enHtml).toContain('<html lang="en-US"');
+    expect(enHtml).toContain("No messages yet");
+    expect(enHtml).toContain("Type a message or caption...");
+
+    const ptRes = await fetch(mendel.server.url.origin, {
+      headers: { "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8" },
+    });
+    const ptHtml = await ptRes.text();
+    expect(ptHtml).toContain('<html lang="pt-BR"');
+    expect(ptHtml).toContain("Nenhuma mensagem ainda");
+    expect(ptHtml).toContain("Digite uma mensagem ou legenda...");
+
+    const frRes = await fetch(mendel.server.url.origin, {
+      headers: { "Accept-Language": "fr-FR,fr;q=0.9" },
+    });
+    const frHtml = await frRes.text();
+    expect(frHtml).toContain('<html lang="fr-FR"');
+    expect(frHtml).toContain("Aucun message pour le moment");
+    expect(frHtml).toContain("Écrivez un message ou une légende...");
+  });
 });
