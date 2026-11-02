@@ -137,6 +137,80 @@ export function buildWebhookPayload(
 }
 
 /**
+ * Reads `/proc/net/route` on Linux to discover Docker bridge gateway IPs
+ * (e.g. `172.21.0.1`) in addition to `host.docker.internal`.
+ *
+ * @returns Array of candidate hostnames/IPs representing the Docker host.
+ */
+async function getDockerHostCandidates(): Promise<string[]> {
+  const candidates = new Set<string>();
+  try {
+    const routeText = await Bun.file("/proc/net/route").text();
+    for (const line of routeText.split("\n").slice(1)) {
+      const parts = line.trim().split(/\s+/);
+      if (parts.length < 3) continue;
+      const destHex = parts[1]!;
+      const gwHex = parts[2]!;
+      if (gwHex !== "00000000" && gwHex.length === 8) {
+        const b0 = Number.parseInt(gwHex.slice(6, 8), 16);
+        const b1 = Number.parseInt(gwHex.slice(4, 6), 16);
+        const b2 = Number.parseInt(gwHex.slice(2, 4), 16);
+        const b3 = Number.parseInt(gwHex.slice(0, 2), 16);
+        if (![b0, b1, b2, b3].some(Number.isNaN)) {
+          candidates.add(`${b0}.${b1}.${b2}.${b3}`);
+        }
+      } else if (destHex !== "00000000" && destHex.length === 8) {
+        const b0 = Number.parseInt(destHex.slice(6, 8), 16);
+        const b1 = Number.parseInt(destHex.slice(4, 6), 16);
+        const b2 = Number.parseInt(destHex.slice(2, 4), 16);
+        if (![b0, b1, b2].some(Number.isNaN)) {
+          candidates.add(`${b0}.${b1}.${b2}.1`);
+        }
+      }
+    }
+  } catch {
+    // Ignore when not on Linux
+  }
+  candidates.add("host.docker.internal");
+  return Array.from(candidates);
+}
+
+/**
+ * Sends a webhook POST request, automatically falling back to Docker bridge
+ * gateway IPs and `host.docker.internal` if `localhost` or `127.0.0.1` refuses
+ * the connection inside a container.
+ *
+ * @param webhookUrl - Target webhook URL.
+ * @param init - Fetch request options.
+ * @returns HTTP {@link Response} from the target service.
+ */
+async function postWithDockerFallback(
+  webhookUrl: string,
+  init: RequestInit
+): Promise<Response> {
+  try {
+    return await fetch(webhookUrl, init);
+  } catch (err) {
+    try {
+      const parsed = new URL(webhookUrl);
+      if (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") {
+        const candidates = await getDockerHostCandidates();
+        return await Promise.any(
+          candidates.map((host) => {
+            const alt = new URL(webhookUrl);
+            alt.hostname = host;
+            return fetch(alt.toString(), init);
+          })
+        );
+      }
+    } catch {
+      // Fall through and rethrow original error
+    }
+    throw err;
+  }
+}
+
+/**
  * Dispatches a `messages.upsert` webhook POST request for the specified message
  * and updates its delivery status in {@link MendelStore}.
  *
@@ -184,7 +258,7 @@ export async function dispatchWebhook(
   }
 
   try {
-    const response = await fetch(settings.webhookUrl, {
+    const response = await postWithDockerFallback(settings.webhookUrl, {
       method: "POST",
       headers,
       body: JSON.stringify(payload),
