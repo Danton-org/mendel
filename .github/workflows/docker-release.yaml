@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "ChronVer tag to build (example: 2026.11.1)"
+        description: "ChronVer tag to build (example: 2026.11.2)"
         required: true
         type: string
 
