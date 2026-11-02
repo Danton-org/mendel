@@ -100,8 +100,10 @@
         {
           default = pkgs.mkShell {
             packages = with pkgs; [
+              actionlint
               bun
               skopeo
+              zizmor
             ];
           };
         }
