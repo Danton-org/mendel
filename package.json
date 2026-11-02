@@ -1,0 +1,21 @@
+{
+  "name": "mendel",
+  "version": "2026.11.1",
+  "description": "Chat interface for testing Evolution API-based programs",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "bun build assets/js/index.js --outdir dist --minify && bun build assets/css/index.css --outdir dist --minify",
+    "dev": "bun run build && bun --watch run src/index.ts",
+    "start": "bun run src/index.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "beercss": "^5.0.3",
+    "htmx.org": "^2.0.11"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.4",
+    "typescript": "^7.0.2"
+  }
+}
