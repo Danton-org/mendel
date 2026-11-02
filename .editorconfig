@@ -20,4 +20,4 @@ indent_style = space
 
 [*.yaml]
 indent_size = 2
-indent_style = spac
+indent_style = space
