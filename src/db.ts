@@ -425,6 +425,22 @@ export class MendelStore {
   }
 
   /**
+   * Returns a strictly increasing `created_at` millisecond timestamp so that
+   * newly inserted or edited messages always sort after prior messages.
+   *
+   * @param nowMs - Current Unix epoch time in milliseconds.
+   * @returns Monotonic `created_at` value in milliseconds.
+   */
+  private nextCreatedAt(nowMs: number): number {
+    const row = this.db
+      .query<{ max_created: number | null }, []>(
+        "SELECT MAX(created_at) AS max_created FROM messages"
+      )
+      .get();
+    return Math.max(nowMs, (row?.max_created ?? 0) + 1);
+  }
+
+  /**
    * Inserts a new message record into SQLite.
    *
    * @param input - Message fields and optional binary media data.
@@ -433,6 +449,7 @@ export class MendelStore {
   insertMessage(input: InsertMessageInput): ChatMessage {
     const id = input.id || Bun.randomUUIDv7();
     const nowMs = Date.now();
+    const createdAt = this.nextCreatedAt(nowMs);
     const timestamp = input.timestamp ?? Math.floor(nowMs / 1000);
     const interactiveJson = input.interactive
       ? JSON.stringify(input.interactive)
@@ -462,15 +479,16 @@ export class MendelStore {
         input.webhookStatus ?? null,
         input.webhookError ?? null,
         timestamp,
-        nowMs
+        createdAt
       );
 
     return this.getMessage(id)!;
   }
 
   /**
-   * Updates the text of an existing message and marks it as edited, or inserts
-   * a new incoming message if the target ID does not exist.
+   * Updates the text of an existing message, refreshes its timestamp so it
+   * sorts after newer messages, and marks it as edited, or inserts a new
+   * incoming message if the target ID does not exist.
    *
    * @param id - Target message ID to edit.
    * @param text - Replacement message text.
@@ -484,9 +502,14 @@ export class MendelStore {
   ): ChatMessage {
     const existing = this.getMessage(id);
     if (existing) {
+      const nowMs = Date.now();
+      const createdAt = this.nextCreatedAt(nowMs);
+      const timestamp = Math.floor(nowMs / 1000);
       this.db
-        .prepare("UPDATE messages SET text = ?, edited = 1 WHERE id = ?")
-        .run(text, id);
+        .prepare(
+          "UPDATE messages SET text = ?, edited = 1, timestamp = ?, created_at = ? WHERE id = ?"
+        )
+        .run(text, timestamp, createdAt, id);
       return this.getMessage(id)!;
     }
     return this.insertMessage({

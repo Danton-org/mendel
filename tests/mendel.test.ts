@@ -173,7 +173,16 @@ describe("mendel server", () => {
     expect(sendTextJson.key.fromMe).toBe(true);
     const statusMsgId = sendTextJson.key.id;
 
-    // 2. updateMessage
+    // 2. Insert an outgoing message after the initial status message, then edit
+    // the earlier status message via updateMessage and verify it sorts after
+    // the outgoing message.
+    const userFollowUp = mendel.store.insertMessage({
+      instance: "dietia",
+      remoteJid: "5511988887777@s.whatsapp.net",
+      direction: "outgoing",
+      text: "1 - Configurar meu Perfil Agora",
+    });
+
     const updateRes = await fetch(
       `${mendel.server.url.origin}/chat/updateMessage/dietia`,
       {
@@ -195,6 +204,10 @@ describe("mendel server", () => {
       "✅ Refeição registrada: 450 kcal!"
     );
     expect(mendel.store.getMessage(statusMsgId)?.edited).toBe(true);
+    const orderedIds = mendel.store.listMessages().map((m) => m.id);
+    expect(orderedIds.indexOf(statusMsgId)).toBeGreaterThan(
+      orderedIds.indexOf(userFollowUp.id)
+    );
 
     // 3. sendMedia (base64 image from service)
     const sampleImg = new Uint8Array([1, 2, 3, 4, 5]);
