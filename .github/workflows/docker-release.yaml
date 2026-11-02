@@ -1,0 +1,54 @@
+name: Release Docker Image
+
+on:
+  push:
+    tags:
+      - "v*"
+      - "20*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "ChronVer tag to build (example: 2026.11.1)"
+        required: true
+        type: string
+
+jobs:
+  release-docker:
+    name: Build & Push Release Docker Image
+    permissions:
+      contents: read
+      packages: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Parse tag
+        env:
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
+        id: meta
+        run: |
+          RAW_TAG="${INPUT_TAG:-$REF_NAME}"
+          VERSION="${RAW_TAG#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+      - uses: cachix/install-nix-action@08dcb3a5e62fa31e2da3d490afc4176ef55ecd72 # v30
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build package
+        run: nix build -L .#mendel
+      - name: Build & Push Docker image
+        env:
+          ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          nix develop --command bash -c "
+            OWNER_LC=\$(echo \"\${REPO_OWNER}\" | tr '[:upper:]' '[:lower:]')
+            VERSION_IMAGE=\"docker://ghcr.io/\${OWNER_LC}/mendel:\${VERSION}\"
+            LATEST_IMAGE=\"docker://ghcr.io/\${OWNER_LC}/mendel:latest\"
+            STREAM_SCRIPT=\$(nix build --no-link --print-out-paths .#docker-mendel)
+            \"\${STREAM_SCRIPT}\" | skopeo copy --insecure-policy --dest-creds \"\${ACTOR}:\${GITHUB_TOKEN}\" docker-archive:/dev/stdin \"\${VERSION_IMAGE}\"
+            skopeo copy --insecure-policy --src-creds \"\${ACTOR}:\${GITHUB_TOKEN}\" --dest-creds \"\${ACTOR}:\${GITHUB_TOKEN}\" \"\${VERSION_IMAGE}\" \"\${LATEST_IMAGE}\"
+          "

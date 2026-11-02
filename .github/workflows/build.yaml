@@ -1,0 +1,43 @@
+name: Build
+
+on:
+  workflow_run:
+    workflows: ["Continuous Integration"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') }}
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          persist-credentials: false
+      - uses: cachix/install-nix-action@08dcb3a5e62fa31e2da3d490afc4176ef55ecd72 # v30
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build package
+        run: nix build -L .#mendel
+      - name: Build & Push Docker image
+        env:
+          ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_OWNER: ${{ github.repository_owner }}
+        run: |
+          nix develop --command bash -c "
+            OWNER_LC=\$(echo \"\${REPO_OWNER}\" | tr '[:upper:]' '[:lower:]')
+            IMAGE=\"docker://ghcr.io/\${OWNER_LC}/mendel:dev\"
+            STREAM_SCRIPT=\$(nix build --no-link --print-out-paths .#docker-mendel)
+            \"\${STREAM_SCRIPT}\" | skopeo copy --insecure-policy --dest-creds \"\${ACTOR}:\${GITHUB_TOKEN}\" docker-archive:/dev/stdin \"\${IMAGE}\"
+          "

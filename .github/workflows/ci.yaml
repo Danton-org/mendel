@@ -1,0 +1,31 @@
+name: Continuous Integration
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: cachix/install-nix-action@08dcb3a5e62fa31e2da3d490afc4176ef55ecd72 # v30
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check Nix formatting
+        run: nix fmt -- --ci
+      - name: Run tests and typecheck
+        run: |
+          nix develop --command bash -c "
+            bun install --frozen-lockfile
+            bun run build
+            bunx tsc --noEmit
+            bun test
+          "
+      - name: Build Nix package
+        run: nix build -L .#mendel
