@@ -2,7 +2,7 @@
 
 Web-based chat interface and drop-in [Evolution API](https://github.com/evolution-foundation/evolution-api) test server.
 
-`mendel` lets you test services built for Evolution API (such as [DietIA](https://github.com/Danton-org/dietia)) without setting up an Evolution API instance or linking a WhatsApp account via WhatsApp Web.
+`mendel` lets you test services built for Evolution API without setting up an Evolution API instance or linking a WhatsApp account via WhatsApp Web.
 
 ## Features
 
@@ -26,7 +26,7 @@ Settings can be configured via `.env` (or environment variables) and updated at 
 | `PORT` / `SERVER_PORT` | `8080` | HTTP server port |
 | `HOST` | `0.0.0.0` | HTTP bind address |
 | `WEBHOOK_URL` | `http://localhost:8000/whatsapp` | Target webhook endpoint receiving `messages.upsert` events |
-| `EVOLUTION_INSTANCE` | `dietia` | Default Evolution API instance name |
+| `EVOLUTION_INSTANCE` | `default` | Default Evolution API instance name |
 | `EVOLUTION_API_KEY` | *(empty)* | API key sent in `apikey` and `x-api-key` webhook headers |
 | `SENDER_NUMBER` | `5511999999999` | Simulated WhatsApp sender phone number |
 | `PUSH_NAME` | `Test User` | Simulated WhatsApp sender display name |

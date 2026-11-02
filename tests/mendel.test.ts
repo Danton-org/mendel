@@ -33,7 +33,7 @@ describe("mendel server", () => {
 
     mendel.store.updateSettings({
       webhookUrl: `${webhookServer.url.origin}/whatsapp`,
-      instanceName: "dietia",
+      instanceName: "default",
       apiKey: "secret-key-123",
       senderNumber: "5511988887777",
       pushName: "Alice",
@@ -50,10 +50,10 @@ describe("mendel server", () => {
     expect(pageRes.status).toBe(200);
     const pageHtml = await pageRes.text();
     expect(pageHtml).toContain("mendel");
-    expect(pageHtml).toContain("dietia");
+    expect(pageHtml).toContain("default");
 
     const form = new FormData();
-    form.set("text", "Oi DietIA, almocei arroz e feijão");
+    form.set("text", "Olá, testando envio de mensagem");
 
     const sendRes = await fetch(`${mendel.server.url.origin}/ui/send`, {
       method: "POST",
@@ -61,7 +61,7 @@ describe("mendel server", () => {
     });
     expect(sendRes.status).toBe(200);
     const fragment = await sendRes.text();
-    expect(fragment).toContain("Oi DietIA, almocei arroz e feijão");
+    expect(fragment).toContain("Olá, testando envio de mensagem");
 
     // Wait briefly for async webhook dispatch
     await Bun.sleep(50);
@@ -70,7 +70,7 @@ describe("mendel server", () => {
     const wh = receivedWebhooks[0]!;
     expect(wh.headers["apikey"]).toBe("secret-key-123");
     expect(wh.body.event).toBe("messages.upsert");
-    expect(wh.body.instance).toBe("dietia");
+    expect(wh.body.instance).toBe("default");
 
     const data = wh.body.data as Record<string, unknown>;
     const key = data.key as Record<string, unknown>;
@@ -78,7 +78,7 @@ describe("mendel server", () => {
 
     expect(key.remoteJid).toBe("5511988887777@s.whatsapp.net");
     expect(key.fromMe).toBe(false);
-    expect(message.conversation).toBe("Oi DietIA, almocei arroz e feijão");
+    expect(message.conversation).toBe("Olá, testando envio de mensagem");
   });
 
   test("dispatches image and video messages with base64 and serves /media/:id", async () => {
@@ -153,7 +153,7 @@ describe("mendel server", () => {
   test("handles Evolution API sendText, updateMessage, sendMedia, and sendButtons", async () => {
     // 1. sendText
     const sendTextRes = await fetch(
-      `${mendel.server.url.origin}/message/sendText/dietia`,
+      `${mendel.server.url.origin}/message/sendText/default`,
       {
         method: "POST",
         headers: {
@@ -162,7 +162,7 @@ describe("mendel server", () => {
         },
         body: JSON.stringify({
           number: "5511988887777",
-          text: "Processando sua refeição...",
+          text: "Processando sua mensagem...",
         }),
       }
     );
@@ -177,20 +177,20 @@ describe("mendel server", () => {
     // the earlier status message via updateMessage and verify it sorts after
     // the outgoing message.
     const userFollowUp = mendel.store.insertMessage({
-      instance: "dietia",
+      instance: "default",
       remoteJid: "5511988887777@s.whatsapp.net",
       direction: "outgoing",
       text: "1 - Configurar meu Perfil Agora",
     });
 
     const updateRes = await fetch(
-      `${mendel.server.url.origin}/chat/updateMessage/dietia`,
+      `${mendel.server.url.origin}/chat/updateMessage/default`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           number: "5511988887777",
-          text: "✅ Refeição registrada: 450 kcal!",
+          text: "✅ Mensagem atualizada!",
           key: {
             remoteJid: "5511988887777@s.whatsapp.net",
             fromMe: true,
@@ -201,7 +201,7 @@ describe("mendel server", () => {
     );
     expect(updateRes.status).toBe(200);
     expect(mendel.store.getMessage(statusMsgId)?.text).toBe(
-      "✅ Refeição registrada: 450 kcal!"
+      "✅ Mensagem atualizada!"
     );
     expect(mendel.store.getMessage(statusMsgId)?.edited).toBe(true);
     const orderedIds = mendel.store.listMessages().map((m) => m.id);
@@ -212,7 +212,7 @@ describe("mendel server", () => {
     // 3. sendMedia (base64 image from service)
     const sampleImg = new Uint8Array([1, 2, 3, 4, 5]);
     const sendMediaRes = await fetch(
-      `${mendel.server.url.origin}/message/sendMedia/dietia`,
+      `${mendel.server.url.origin}/message/sendMedia/default`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -230,15 +230,15 @@ describe("mendel server", () => {
 
     // 4. sendButtons & interactive reply
     const sendBtnsRes = await fetch(
-      `${mendel.server.url.origin}/message/sendButtons/dietia`,
+      `${mendel.server.url.origin}/message/sendButtons/default`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           number: "5511988887777",
-          title: "Confirmar registro?",
-          description: "Deseja salvar esta refeição?",
-          footer: "DietIA",
+          title: "Confirmar ação?",
+          description: "Deseja continuar?",
+          footer: "mendel",
           buttons: [
             { buttonId: "confirm_yes", buttonText: { displayText: "Sim" } },
             { buttonId: "confirm_no", buttonText: { displayText: "Não" } },
@@ -250,7 +250,7 @@ describe("mendel server", () => {
 
     const uiMessagesRes = await fetch(`${mendel.server.url.origin}/ui/messages`);
     const uiHtml = await uiMessagesRes.text();
-    expect(uiHtml).toContain("✅ Refeição registrada: 450 kcal!");
+    expect(uiHtml).toContain("✅ Mensagem atualizada!");
     expect(uiHtml).toContain("Gráfico semanal");
     expect(uiHtml).toContain("confirm_yes");
   });
@@ -282,13 +282,13 @@ describe("mendel server", () => {
   });
 
   test("renders WhatsApp markup (bold, italic, strikethrough, code, blockquote, lists)", async () => {
-    await fetch(`${mendel.server.url.origin}/message/sendText/dietia`, {
+    await fetch(`${mendel.server.url.origin}/message/sendText/default`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         number: "5511988887777",
         text: [
-          "👋 *Boas-vindas ao DietIA*",
+          "👋 *Boas-vindas ao mendel*",
           "3. *Cardápios Flexíveis com 1 Toque:*",
           "4. *Minhas Receitas & Compartilhamento:*",
           "Para começarmos, *como posso te chamar?*",
@@ -302,7 +302,7 @@ describe("mendel server", () => {
 
     const uiMessagesRes = await fetch(`${mendel.server.url.origin}/ui/messages`);
     const uiHtml = await uiMessagesRes.text();
-    expect(uiHtml).toContain("<strong>Boas-vindas ao DietIA</strong>");
+    expect(uiHtml).toContain("<strong>Boas-vindas ao mendel</strong>");
     expect(uiHtml).toContain("<strong>Cardápios Flexíveis com 1 Toque:</strong>");
     expect(uiHtml).toContain(
       "<strong>Minhas Receitas &amp; Compartilhamento:</strong>"

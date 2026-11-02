@@ -235,7 +235,7 @@ export class MendelStore {
 
     const defaults: Record<string, string> = {
       webhook_url: envWebhook ?? "http://localhost:8000/whatsapp",
-      instance_name: envInstance ?? "dietia",
+      instance_name: envInstance ?? "default",
       api_key: envApiKey ?? "",
       sender_number: envSender ?? "5511999999999",
       push_name: envPushName ?? "Test User",
@@ -272,7 +272,7 @@ export class MendelStore {
     const map = new Map(rows.map((r) => [r.key, r.value]));
     return {
       webhookUrl: map.get("webhook_url") ?? "http://localhost:8000/whatsapp",
-      instanceName: map.get("instance_name") ?? "dietia",
+      instanceName: map.get("instance_name") ?? "default",
       apiKey: map.get("api_key") ?? "",
       senderNumber: map.get("sender_number") ?? "5511999999999",
       pushName: map.get("push_name") ?? "Test User",
@@ -293,7 +293,7 @@ export class MendelStore {
       upsert.run("webhook_url", partial.webhookUrl.trim());
     }
     if (partial.instanceName !== undefined) {
-      upsert.run("instance_name", partial.instanceName.trim() || "dietia");
+      upsert.run("instance_name", partial.instanceName.trim() || "default");
     }
     if (partial.apiKey !== undefined) {
       upsert.run("api_key", partial.apiKey.trim());

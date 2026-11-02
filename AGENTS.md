@@ -11,10 +11,6 @@
 3. Outbound API calls made by the service (such as `/message/sendText/:instance`, `/message/sendMedia/:instance`, etc.) are received by `mendel` and rendered in the chat interface as replies.
 4. Supports sending and receiving text, images, and videos.
 
-### Target Compatibility
-
-A primary reference consumer is [DietIA](https://github.com/Danton-org/dietia). The end goal of `mendel` is to serve as a drop-in replacement for the Evolution API service in DietIA's development environment.
-
 ## Technology Stack
 
 - **Runtime & Web Server**: [Bun](https://bun.sh/) using its native HTTP server (`Bun.serve`).

@@ -46,7 +46,7 @@ export const enUS = {
   configuration: "Configuration",
   webhookUrlField: "Target Webhook URL",
   webhookUrlHelper:
-    "URL where MESSAGES_UPSERT payloads are sent (e.g. http://dietia:8000/whatsapp)",
+    "URL where MESSAGES_UPSERT payloads are sent (e.g. http://localhost:8000/whatsapp)",
   instanceNameField: "Evolution Instance Name",
   apiKeyField: "API Key (apikey / x-api-key)",
   senderNumberField: "Simulated Sender Phone Number",
@@ -91,7 +91,7 @@ export const ptBR: Record<TranslationKeys, string> = {
   configuration: "Configuração",
   webhookUrlField: "URL do Webhook de Destino",
   webhookUrlHelper:
-    "URL para onde os payloads MESSAGES_UPSERT são enviados (ex: http://dietia:8000/whatsapp)",
+    "URL para onde os payloads MESSAGES_UPSERT são enviados (ex: http://localhost:8000/whatsapp)",
   instanceNameField: "Nome da Instância Evolution",
   apiKeyField: "Chave da API (apikey / x-api-key)",
   senderNumberField: "Número de Telefone Simulado",
@@ -131,7 +131,7 @@ export const frFR: Record<TranslationKeys, string> = {
   configuration: "Configuration",
   webhookUrlField: "URL du webhook cible",
   webhookUrlHelper:
-    "URL vers laquelle les payloads MESSAGES_UPSERT sont envoyés (ex. http://dietia:8000/whatsapp)",
+    "URL vers laquelle les payloads MESSAGES_UPSERT sont envoyés (ex. http://localhost:8000/whatsapp)",
   instanceNameField: "Nom de l'instance Evolution",
   apiKeyField: "Clé API (apikey / x-api-key)",
   senderNumberField: "Numéro de téléphone simulé",
