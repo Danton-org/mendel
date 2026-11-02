@@ -296,12 +296,11 @@ export function createMendelServer(options: ServerOptions = {}) {
     );
   }
 
-  const startBunServer = (targetPort: number) =>
-    Bun.serve({
-      port: targetPort,
-      hostname,
-      routes: {
-        "/": {
+  const server = Bun.serve({
+    port,
+    hostname,
+    routes: {
+      "/": {
         GET: (req) => {
           const accept = req.headers.get("accept") || "";
           if (
@@ -1052,17 +1051,6 @@ export function createMendelServer(options: ServerOptions = {}) {
     },
   });
 
-  const server = startBunServer(port);
-
-  let compatServer: ReturnType<typeof startBunServer> | null = null;
-  if (port !== 8080 && port !== 0) {
-    try {
-      compatServer = startBunServer(8080);
-    } catch {
-      compatServer = null;
-    }
-  }
-
   return {
     server,
     store,
@@ -1080,7 +1068,6 @@ export function createMendelServer(options: ServerOptions = {}) {
       }
       sseControllers.clear();
       server.stop(true);
-      compatServer?.stop(true);
       store.close();
     },
   };

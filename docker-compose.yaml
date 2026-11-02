@@ -5,10 +5,8 @@ services:
     env_file:
       - path: ./.env
         required: false
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     ports:
-      - "${PORT:-8080}:${PORT:-8080}"
+      - "${PORT:-8080}:8080"
     volumes:
       - mendel_data:/data
     restart: unless-stopped
