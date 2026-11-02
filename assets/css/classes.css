@@ -112,6 +112,55 @@ body {
   white-space: pre-wrap;
 }
 
+.message-text .wa-quote {
+  background: color-mix(in srgb, var(--on-surface) 7%, transparent);
+  border-left: 3px solid var(--primary);
+  border-radius: 0.25rem 0.5rem 0.5rem 0.25rem;
+  margin: 0.35rem 0;
+  padding: 0.35rem 0.65rem;
+}
+
+.message-text .wa-quote:first-child,
+.message-text .wa-code-block:first-child,
+.message-text .wa-list:first-child {
+  margin-top: 0;
+}
+
+.message-text .wa-quote:last-child,
+.message-text .wa-code-block:last-child,
+.message-text .wa-list:last-child {
+  margin-bottom: 0;
+}
+
+.message-text .wa-inline-code,
+.message-text .wa-monospace {
+  background: color-mix(in srgb, var(--on-surface) 10%, transparent);
+  border-radius: 0.25rem;
+  font-family: monospace;
+  font-size: 0.9em;
+  padding: 0.1rem 0.3rem;
+}
+
+.message-text .wa-code-block {
+  background: color-mix(in srgb, var(--on-surface) 10%, transparent);
+  border-radius: 0.5rem;
+  font-family: monospace;
+  font-size: 0.88em;
+  margin: 0.35rem 0;
+  overflow-x: auto;
+  padding: 0.5rem 0.75rem;
+}
+
+.message-text .wa-list {
+  margin: 0.35rem 0;
+  padding-left: 1.25rem;
+  white-space: normal;
+}
+
+.message-text .wa-list li {
+  white-space: pre-wrap;
+}
+
 .message-media {
   border-radius: 0.75rem;
   display: block;

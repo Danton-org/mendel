@@ -8,6 +8,7 @@
 import type { TFunction } from "i18next";
 import type { ChatMessage, MendelSettings } from "../../db";
 import { getTranslator } from "../../i18n";
+import { formatWhatsAppText } from "../markup";
 import { renderInteractive } from "./interactive";
 import { renderMedia } from "./media";
 
@@ -119,7 +120,7 @@ export function renderMessageItem(
     : "";
   const mediaHtml = renderMedia(msg, t);
   const textHtml = msg.text
-    ? `<p class="message-text">${Bun.escapeHTML(msg.text)}</p>`
+    ? `<div class="message-text">${formatWhatsAppText(msg.text)}</div>`
     : "";
   const interactiveHtml = msg.interactive
     ? renderInteractive(msg.id, msg.interactive)

@@ -29,4 +29,5 @@ export {
   renderSettingsField,
   type SettingsFieldProps,
 } from "./components/settings-dialog";
+export { formatWhatsAppText } from "./markup";
 export { renderHead, renderPage } from "./pages/index";

@@ -280,4 +280,47 @@ describe("mendel server", () => {
     expect(frHtml).toContain("Aucun message pour le moment");
     expect(frHtml).toContain("Écrivez un message ou une légende...");
   });
+
+  test("renders WhatsApp markup (bold, italic, strikethrough, code, blockquote, lists)", async () => {
+    await fetch(`${mendel.server.url.origin}/message/sendText/dietia`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        number: "5511988887777",
+        text: [
+          "👋 *Boas-vindas ao DietIA*",
+          "3. *Cardápios Flexíveis com 1 Toque:*",
+          "4. *Minhas Receitas & Compartilhamento:*",
+          "Para começarmos, *como posso te chamar?*",
+          "Texto _itálico_, ~riscado~, `código *literal*` e ```bloco_mono```",
+          "> 🔒 *Privacidade:* Seus dados são confidenciais.",
+          "- Item *um*",
+          "- Item _dois_",
+        ].join("\n"),
+      }),
+    });
+
+    const uiMessagesRes = await fetch(`${mendel.server.url.origin}/ui/messages`);
+    const uiHtml = await uiMessagesRes.text();
+    expect(uiHtml).toContain("<strong>Boas-vindas ao DietIA</strong>");
+    expect(uiHtml).toContain("<strong>Cardápios Flexíveis com 1 Toque:</strong>");
+    expect(uiHtml).toContain(
+      "<strong>Minhas Receitas &amp; Compartilhamento:</strong>"
+    );
+    expect(uiHtml).toContain("<strong>como posso te chamar?</strong>");
+    expect(uiHtml).toContain("<em>itálico</em>");
+    expect(uiHtml).toContain("<del>riscado</del>");
+    expect(uiHtml).toContain(
+      '<code class="wa-inline-code">código *literal*</code>'
+    );
+    expect(uiHtml).toContain(
+      '<code class="wa-monospace">bloco_mono</code>'
+    );
+    expect(uiHtml).toContain(
+      '<blockquote class="wa-quote">🔒 <strong>Privacidade:</strong> Seus dados são confidenciais.</blockquote>'
+    );
+    expect(uiHtml).toContain(
+      '<ul class="wa-list"><li>Item <strong>um</strong></li><li>Item <em>dois</em></li></ul>'
+    );
+  });
 });
