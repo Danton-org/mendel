@@ -26,6 +26,7 @@ A primary reference consumer is [DietIA](https://github.com/Danton-org/dietia). 
 
 - **Primary Distribution**: Docker container images hosted on GitHub Container Registry (`ghcr.io`).
 - **Docker & Docker Compose**: A `Dockerfile` and `docker-compose.yaml` are provided so users can build and run `mendel` directly with standard Docker tooling (`docker compose up -d --build`).
+- **Environment Configuration**: Never add or modify an `environment` key in `docker-compose.yaml`. Define default environment variables in `.env.example` and instruct users to configure their `.env` file instead.
 
 ## Nix
 

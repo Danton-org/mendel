@@ -2,6 +2,7 @@
 .*
 !.dockerignore
 !.editorconfig
+!.env.example
 !.envrc
 !.github/
 !.gitignore

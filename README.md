@@ -13,7 +13,13 @@ Web-based chat interface and drop-in [Evolution API](https://github.com/evolutio
 
 ## Configuration
 
-Settings can be configured in the web UI or via environment variables:
+Copy `.env.example` to `.env` and adjust the values for your environment:
+
+```bash
+cp .env.example .env
+```
+
+Settings can be configured via `.env` (or environment variables) and updated at runtime in the web UI:
 
 | Variable | Default | Description |
 | --- | --- | --- |
@@ -30,9 +36,10 @@ Settings can be configured in the web UI or via environment variables:
 
 ### Docker Compose
 
-Run `mendel` directly from this repository using Docker Compose:
+Set up your `.env` file and run `mendel` using Docker Compose:
 
 ```bash
+cp .env.example .env
 docker compose up -d --build
 ```
 
@@ -42,10 +49,9 @@ Or use the pre-built image from `ghcr.io` as a drop-in Evolution API replacement
 services:
   evolution-api:
     image: ghcr.io/danton-org/mendel:dev
-    environment:
-      - WEBHOOK_URL=http://dietia:8000/whatsapp
-      - EVOLUTION_INSTANCE=dietia
-      - EVOLUTION_API_KEY=evolution-api-secret-key-12345
+    env_file:
+      - path: ./.env
+        required: false
     ports:
       - "8081:8080"
 ```
@@ -55,6 +61,7 @@ Open `http://localhost:8080` (or `http://localhost:8081`) in your browser to cha
 ### Local Development
 
 ```bash
+cp .env.example .env
 bun install
 bun run start
 ```
@@ -71,4 +78,5 @@ nix build .#docker-mendel
 
 ## Documentation & Agent Guidelines
 
-All TypeScript and JavaScript modules, classes, interfaces, types, and functions in this repository are documented following the [TSDoc](https://tsdoc.org/) specification (including `@packageDocumentation` on modules and `@param` / `@returns` tags on functions and methods). Future contributors and AI agents must document every new or modified module and function using TSDoc.
+- **TSDoc**: All TypeScript and JavaScript modules, classes, interfaces, types, and functions in this repository are documented following the [TSDoc](https://tsdoc.org/) specification (including `@packageDocumentation` on modules and `@param` / `@returns` tags on functions and methods). Future contributors and AI agents must document every new or modified module and function using TSDoc.
+- **Environment Configuration**: Future AI agents must **never** add or modify an `environment` key in `docker-compose.yaml`. Always keep environment variables in `.env.example` and instruct users to configure their local `.env` file instead.
