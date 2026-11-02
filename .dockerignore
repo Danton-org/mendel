@@ -1,0 +1,10 @@
+.direnv/
+.git/
+dist/
+node_modules/
+result
+result-*
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*

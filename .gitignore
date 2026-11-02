@@ -1,5 +1,6 @@
 # Ignore all dotfiles, except those under version control.
 .*
+!.dockerignore
 !.editorconfig
 !.envrc
 !.github/

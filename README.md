@@ -28,7 +28,15 @@ Settings can be configured in the web UI or via environment variables:
 
 ## Usage
 
-### Docker Compose (Drop-In Evolution API Replacement)
+### Docker Compose
+
+Run `mendel` directly from this repository using Docker Compose:
+
+```bash
+docker compose up -d --build
+```
+
+Or use the pre-built image from `ghcr.io` as a drop-in Evolution API replacement:
 
 ```yaml
 services:
@@ -42,7 +50,7 @@ services:
       - "8081:8080"
 ```
 
-Open `http://localhost:8081` in your browser to chat with your service.
+Open `http://localhost:8080` (or `http://localhost:8081`) in your browser to chat with your service.
 
 ### Local Development
 

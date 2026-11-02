@@ -1,0 +1,20 @@
+services:
+  mendel:
+    build:
+      context: .
+    ports:
+      - "${PORT:-8080}:8080"
+    environment:
+      - PORT=8080
+      - DATABASE_PATH=/data/mendel.sqlite
+      - WEBHOOK_URL=${WEBHOOK_URL:-http://localhost:8000/whatsapp}
+      - EVOLUTION_INSTANCE=${EVOLUTION_INSTANCE:-dietia}
+      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:-}
+      - SENDER_NUMBER=${SENDER_NUMBER:-5511999999999}
+      - PUSH_NAME=${PUSH_NAME:-Test User}
+    volumes:
+      - mendel_data:/data
+    restart: unless-stopped
+
+volumes:
+  mendel_data:
