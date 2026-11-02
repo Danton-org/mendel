@@ -1,8 +1,23 @@
+/**
+ * Client-side script for the `mendel` web chat interface.
+ *
+ * Initializes HTMX and Beer CSS, manages light/dark theme persistence,
+ * previews attached images and videos, and listens for live Server-Sent Events.
+ *
+ * @packageDocumentation
+ */
+
 import htmx from "htmx.org";
 import "beercss/dist/cdn/beer.min.js";
 
 window.htmx = htmx;
 
+/**
+ * Applies the specified color theme (`"light"` or `"dark"`) to the document
+ * and persists it in `localStorage`.
+ *
+ * @param mode - Target theme mode (`"light"` or `"dark"`).
+ */
 function applyTheme(mode) {
   const isDark = mode === "dark";
   document.documentElement.classList.remove("light", "dark");
@@ -17,11 +32,20 @@ function applyTheme(mode) {
   }
 }
 
+/**
+ * Toggles the active theme between `"light"` and `"dark"`.
+ */
 window.toggleTheme = function () {
   const isDark = document.body.classList.contains("dark");
   applyTheme(isDark ? "light" : "dark");
 };
 
+/**
+ * Scrolls the `#chat-scroll` message feed to the bottom when near the end or
+ * when `force` is `true`.
+ *
+ * @param force - Whether to scroll unconditionally regardless of current scroll position.
+ */
 window.scrollToBottom = function (force = false) {
   const container = document.getElementById("chat-scroll");
   if (!container) return;
@@ -32,6 +56,9 @@ window.scrollToBottom = function (force = false) {
   }
 };
 
+/**
+ * Clears the selected media file input and hides `#media-preview-bar`.
+ */
 window.clearMediaSelection = function () {
   const fileInput = document.getElementById("media-input");
   const previewBar = document.getElementById("media-preview-bar");
@@ -51,6 +78,12 @@ window.clearMediaSelection = function () {
   }
 };
 
+/**
+ * Updates `#media-preview-bar` with the selected image or video file metadata
+ * and thumbnail.
+ *
+ * @param file - Selected `File` object, or `undefined` to clear the preview.
+ */
 function updateMediaPreview(file) {
   const previewBar = document.getElementById("media-preview-bar");
   const previewName = document.getElementById("media-preview-name");
@@ -104,9 +137,12 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Support pasting images/videos directly into the chat composer
   document.addEventListener("paste", (e) => {
-    if (!e.clipboardData || !e.clipboardData.files || !e.clipboardData.files.length) {
+    if (
+      !e.clipboardData ||
+      !e.clipboardData.files ||
+      !e.clipboardData.files.length
+    ) {
       return;
     }
     const file = e.clipboardData.files[0];
@@ -121,8 +157,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Connect to Server-Sent Events for live incoming messages and status updates
   let lastVersion = -1;
+  /**
+   * Connects to `/api/events` SSE stream and triggers an HTMX refresh whenever
+   * the server message state version advances.
+   */
   function connectSSE() {
     const es = new EventSource("/api/events");
     es.addEventListener("version", (evt) => {

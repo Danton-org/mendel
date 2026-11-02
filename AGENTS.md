@@ -35,3 +35,4 @@ A primary reference consumer is [DietIA](https://github.com/Danton-org/dietia). 
 - **Commit Style**: Linux Kernel Style ("Subsystem Prefix Style"):
   - Format: `<subsystem>: <imperative summary>` (e.g., `server: handle sendMedia endpoint`, `nix: add docker image output`, `ui: apply #cf5114 dynamic theme`).
   - Keep subject lines concise, lowercase after the subsystem prefix (except proper nouns/acronyms), and without a trailing period.
+- **Code Documentation**: Document every module (`@packageDocumentation`) and every function, method, class, interface, and type following [TSDoc](https://tsdoc.org/).

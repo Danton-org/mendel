@@ -1,16 +1,39 @@
+/**
+ * Configuration modal dialog UI components for editing webhook and instance
+ * settings.
+ *
+ * @packageDocumentation
+ */
+
 import type { TFunction } from "i18next";
 import type { MendelSettings } from "../../db";
 import { getTranslator } from "../../i18n";
 
-interface SettingsFieldProps {
+/**
+ * Properties for rendering a single Beer CSS input field inside the settings
+ * dialog.
+ */
+export interface SettingsFieldProps {
+  /** HTML `name` attribute of the input field. */
   name: string;
+  /** Localized field label. */
   label: string;
+  /** Current field value. */
   value: string;
+  /** Input type (`"text"` or `"url"`). */
   type?: "text" | "url";
+  /** Whether the input is required. */
   required?: boolean;
+  /** Optional helper caption rendered below the input. */
   helper?: string;
 }
 
+/**
+ * Renders a labeled Beer CSS form field for the settings modal dialog.
+ *
+ * @param props - Field configuration properties.
+ * @returns HTML markup for the `.field` element.
+ */
 export function renderSettingsField({
   name,
   label,
@@ -33,6 +56,15 @@ export function renderSettingsField({
   `;
 }
 
+/**
+ * Renders the `<dialog id="settings-dialog">` modal allowing users to update
+ * the target webhook URL, Evolution API instance name, API key, and simulated
+ * sender identity.
+ *
+ * @param settings - Current application settings.
+ * @param t - Fixed locale translator function.
+ * @returns HTML markup for the settings dialog.
+ */
 export function renderSettingsDialog(
   settings: MendelSettings,
   t: TFunction = getTranslator()

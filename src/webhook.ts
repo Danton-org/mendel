@@ -1,12 +1,38 @@
+/**
+ * Outbound webhook construction and HTTP dispatch for Evolution API
+ * `messages.upsert` events.
+ *
+ * @packageDocumentation
+ */
+
 import type { ChatMessage, MendelSettings, MendelStore } from "./db";
 
+/**
+ * Optional metadata describing an interactive button, list row, or poll vote
+ * selected by the user in the chat interface.
+ */
 export interface InteractiveReplyMeta {
+  /** Selected button ID when replying to a buttons message. */
   buttonId?: string;
+  /** Selected row ID when replying to a list message. */
   rowId?: string;
+  /** Selected option text when voting on a poll message. */
   pollOption?: string;
+  /** Original poll message ID being voted on. */
   pollMessageId?: string;
 }
 
+/**
+ * Builds an Evolution API-compatible `messages.upsert` webhook payload from a
+ * stored {@link ChatMessage}.
+ *
+ * @param msg - Outgoing chat message record.
+ * @param settings - Current webhook and instance configuration.
+ * @param serverUrl - Origin URL of the `mendel` server (e.g. `"http://localhost:8080"`).
+ * @param mediaBytes - Optional raw media bytes to encode as base64 in `data.message.base64`.
+ * @param replyMeta - Optional interactive reply metadata (button, list row, or poll vote).
+ * @returns Serializable Evolution API webhook payload object.
+ */
 export function buildWebhookPayload(
   msg: ChatMessage,
   settings: MendelSettings,
@@ -110,6 +136,17 @@ export function buildWebhookPayload(
   };
 }
 
+/**
+ * Dispatches a `messages.upsert` webhook POST request for the specified message
+ * and updates its delivery status in {@link MendelStore}.
+ *
+ * @param store - Database store instance.
+ * @param messageId - ID of the outgoing message to dispatch.
+ * @param serverUrl - Origin URL of the `mendel` server.
+ * @param onStatusChange - Optional callback invoked after delivery status changes.
+ * @param replyMeta - Optional interactive reply metadata.
+ * @returns Result object indicating whether webhook delivery succeeded.
+ */
 export async function dispatchWebhook(
   store: MendelStore,
   messageId: string,

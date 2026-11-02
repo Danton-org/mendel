@@ -60,3 +60,7 @@ nix run .#mendel
 # Build the layered Docker image stream script
 nix build .#docker-mendel
 ```
+
+## Documentation & Agent Guidelines
+
+All TypeScript and JavaScript modules, classes, interfaces, types, and functions in this repository are documented following the [TSDoc](https://tsdoc.org/) specification (including `@packageDocumentation` on modules and `@param` / `@returns` tags on functions and methods). Future contributors and AI agents must document every new or modified module and function using TSDoc.

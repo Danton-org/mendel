@@ -1,7 +1,23 @@
+/**
+ * Internationalization (i18n) module powered by `i18next`.
+ *
+ * Provides translations for American English (`en-US`), Brazilian Portuguese
+ * (`pt-BR`), and French (`fr-FR`), resolving locales from HTTP
+ * `Accept-Language` headers via `Intl.Locale`.
+ *
+ * @packageDocumentation
+ */
+
 import i18next, { type TFunction } from "i18next";
 
+/**
+ * Canonical BCP 47 locale tags supported by `mendel`.
+ */
 export type SupportedLocale = "en-US" | "pt-BR" | "fr-FR";
 
+/**
+ * American English (`en-US`) translation dictionary.
+ */
 export const enUS = {
   lang: "en-US",
   pageTitle: "mendel — Evolution API Test Chat",
@@ -39,8 +55,14 @@ export const enUS = {
   save: "Save",
 } as const;
 
+/**
+ * Union of all valid translation keys in `mendel`.
+ */
 export type TranslationKeys = keyof typeof enUS;
 
+/**
+ * Brazilian Portuguese (`pt-BR`) translation dictionary.
+ */
 export const ptBR: Record<TranslationKeys, string> = {
   lang: "pt-BR",
   pageTitle: "mendel — Chat de Teste da Evolution API",
@@ -78,6 +100,9 @@ export const ptBR: Record<TranslationKeys, string> = {
   save: "Salvar",
 };
 
+/**
+ * French (`fr-FR`) translation dictionary.
+ */
 export const frFR: Record<TranslationKeys, string> = {
   lang: "fr-FR",
   pageTitle: "mendel — Chat de test Evolution API",
@@ -132,6 +157,13 @@ await i18nInstance.init({
   },
 });
 
+/**
+ * Parses an HTTP `Accept-Language` header into an ordered list of candidate
+ * BCP 47 locale tags and base languages, ending with `"en-US"` as fallback.
+ *
+ * @param header - Raw `Accept-Language` header value.
+ * @returns Ordered array of locale tags for `i18next.getFixedT`.
+ */
 export function parseAcceptLanguage(header: string | null | undefined): string[] {
   if (!header) return ["en-US"];
   const candidates: string[] = [];
@@ -150,6 +182,13 @@ export function parseAcceptLanguage(header: string | null | undefined): string[]
   return candidates;
 }
 
+/**
+ * Returns a fixed `i18next` translator function (`t`) matching the provided
+ * HTTP `Request` or `Accept-Language` header string.
+ *
+ * @param reqOrHeader - HTTP `Request`, raw `Accept-Language` string, or `null`.
+ * @returns Fixed `TFunction` bound to the resolved locale.
+ */
 export function getTranslator(reqOrHeader?: Request | string | null): TFunction {
   const header =
     typeof reqOrHeader === "string" || reqOrHeader == null

@@ -1,9 +1,24 @@
+/**
+ * SQLite persistence layer for `mendel` backed by `bun:sqlite`.
+ *
+ * Manages instance/webhook settings, chat message records, and binary media
+ * attachments.
+ *
+ * @packageDocumentation
+ */
+
 import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
+/**
+ * Supported media attachment categories for Evolution API messages.
+ */
 export type MediaType = "image" | "video" | "audio" | "document";
 
+/**
+ * Interactive message metadata rendered as clickable controls in the chat UI.
+ */
 export type InteractivePayload =
   | {
       type: "buttons";
@@ -27,47 +42,91 @@ export type InteractivePayload =
       options: string[];
     };
 
+/**
+ * Runtime configuration for webhook dispatch and simulated Evolution API identity.
+ */
 export interface MendelSettings {
+  /** Target URL where `messages.upsert` webhooks are sent via HTTP POST. */
   webhookUrl: string;
+  /** Default Evolution API instance name reported in webhook payloads. */
   instanceName: string;
+  /** API key included in `apikey` and `x-api-key` webhook headers. */
   apiKey: string;
+  /** Simulated WhatsApp phone number of the user sending messages in the UI. */
   senderNumber: string;
+  /** Simulated WhatsApp display name (`pushName`) of the user. */
   pushName: string;
 }
 
+/**
+ * Normalized chat message entity returned by {@link MendelStore}.
+ */
 export interface ChatMessage {
+  /** Unique message identifier (`key.id`). */
   id: string;
+  /** Evolution API instance name associated with the message. */
   instance: string;
+  /** WhatsApp remote JID (`<number>@s.whatsapp.net`). */
   remoteJid: string;
+  /** Message direction: `"outgoing"` from UI user, `"incoming"` from service. */
   direction: "outgoing" | "incoming";
+  /** Plain text body or media caption. */
   text: string | null;
+  /** Media attachment category, if any. */
   mediaType: MediaType | null;
+  /** MIME type of the attached media. */
   mediaMimetype: string | null;
+  /** Original filename of the attached media. */
   mediaFilename: string | null;
+  /** External media URL when bytes are not stored inline. */
   mediaUrl: string | null;
+  /** Whether raw binary media data is stored in SQLite for this message. */
   hasMediaBlob: boolean;
+  /** Optional interactive buttons, list rows, or poll options. */
   interactive: InteractivePayload | null;
+  /** Delivery status of the outbound webhook for `"outgoing"` messages. */
   webhookStatus: "pending" | "delivered" | "failed" | null;
+  /** Error description when `webhookStatus` is `"failed"`. */
   webhookError: string | null;
+  /** Whether the message text was subsequently edited via `updateMessage`. */
   edited: boolean;
+  /** Message timestamp in Unix epoch seconds. */
   timestamp: number;
+  /** Creation timestamp in Unix epoch milliseconds. */
   createdAt: number;
 }
 
+/**
+ * Parameters for inserting a new message into {@link MendelStore}.
+ */
 export interface InsertMessageInput {
+  /** Optional explicit message ID; defaults to `Bun.randomUUIDv7()`. */
   id?: string;
+  /** Evolution API instance name. */
   instance: string;
+  /** Phone number or WhatsApp JID of the participant. */
   remoteJid: string;
+  /** Message direction (`"outgoing"` from UI, `"incoming"` from API). */
   direction: "outgoing" | "incoming";
+  /** Text content or media caption. */
   text?: string | null;
+  /** Media category when the message includes an attachment. */
   mediaType?: MediaType | null;
+  /** MIME type of the media attachment. */
   mediaMimetype?: string | null;
+  /** Filename of the media attachment. */
   mediaFilename?: string | null;
+  /** Raw binary bytes of the media attachment. */
   mediaData?: Uint8Array | null;
+  /** External URL of the media attachment. */
   mediaUrl?: string | null;
+  /** Optional interactive controls (buttons, list, or poll). */
   interactive?: InteractivePayload | null;
+  /** Initial webhook delivery status. */
   webhookStatus?: "pending" | "delivered" | "failed" | null;
+  /** Initial webhook delivery error message. */
   webhookError?: string | null;
+  /** Explicit Unix timestamp in seconds. */
   timestamp?: number;
 }
 
@@ -90,6 +149,12 @@ interface RawMessageRow {
   created_at: number;
 }
 
+/**
+ * Normalizes a phone number or JID string into a canonical WhatsApp JID.
+ *
+ * @param numberOrJid - Raw phone number or JID string.
+ * @returns Canonical WhatsApp JID (e.g. `"5511999999999@s.whatsapp.net"`).
+ */
 export function formatJid(numberOrJid: string): string {
   const clean = numberOrJid.trim();
   if (!clean) return "5511999999999@s.whatsapp.net";
@@ -98,9 +163,17 @@ export function formatJid(numberOrJid: string): string {
   return `${digits}@s.whatsapp.net`;
 }
 
+/**
+ * SQLite storage engine managing settings, messages, and media blobs.
+ */
 export class MendelStore {
   private db: Database;
 
+  /**
+   * Opens or creates the SQLite database and initializes the schema.
+   *
+   * @param dbPath - Path to the SQLite database file, or `":memory:"`.
+   */
   constructor(dbPath?: string) {
     const resolvedPath =
       dbPath ?? Bun.env.DATABASE_PATH ?? "./mendel.sqlite";
@@ -112,6 +185,9 @@ export class MendelStore {
     this.initSchema();
   }
 
+  /**
+   * Creates database tables and seeds initial settings from environment variables.
+   */
   private initSchema(): void {
     this.db.run(`
       CREATE TABLE IF NOT EXISTS settings (
@@ -182,6 +258,11 @@ export class MendelStore {
     if (envPushName !== undefined) upsert.run("push_name", envPushName);
   }
 
+  /**
+   * Retrieves the current webhook and instance configuration.
+   *
+   * @returns Current {@link MendelSettings}.
+   */
   getSettings(): MendelSettings {
     const rows = this.db
       .query<{ key: string; value: string }, []>(
@@ -198,6 +279,12 @@ export class MendelStore {
     };
   }
 
+  /**
+   * Updates one or more configuration fields in SQLite.
+   *
+   * @param partial - Subset of settings to update.
+   * @returns Updated {@link MendelSettings}.
+   */
   updateSettings(partial: Partial<MendelSettings>): MendelSettings {
     const upsert = this.db.prepare(
       "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value"
@@ -223,6 +310,12 @@ export class MendelStore {
     return this.getSettings();
   }
 
+  /**
+   * Converts a raw SQLite row into a typed {@link ChatMessage}.
+   *
+   * @param row - Raw database row.
+   * @returns Mapped {@link ChatMessage}.
+   */
   private mapRow(row: RawMessageRow): ChatMessage {
     let interactive: InteractivePayload | null = null;
     if (row.interactive_json) {
@@ -252,6 +345,11 @@ export class MendelStore {
     };
   }
 
+  /**
+   * Lists all stored chat messages ordered chronologically.
+   *
+   * @returns Array of {@link ChatMessage} objects.
+   */
   listMessages(): ChatMessage[] {
     const rows = this.db
       .query<RawMessageRow, []>(
@@ -268,6 +366,12 @@ export class MendelStore {
     return rows.map((r) => this.mapRow(r));
   }
 
+  /**
+   * Retrieves a single message by ID without loading its binary media blob.
+   *
+   * @param id - Message identifier.
+   * @returns Matching {@link ChatMessage}, or `null` if not found.
+   */
   getMessage(id: string): ChatMessage | null {
     const row = this.db
       .query<RawMessageRow, [string]>(
@@ -284,6 +388,12 @@ export class MendelStore {
     return row ? this.mapRow(row) : null;
   }
 
+  /**
+   * Retrieves the binary media payload and metadata for a message.
+   *
+   * @param id - Message identifier.
+   * @returns Media bytes, MIME type, filename, and external URL, or `null` if not found.
+   */
   getMessageMedia(id: string): {
     data: Uint8Array | null;
     mimetype: string;
@@ -314,6 +424,12 @@ export class MendelStore {
     };
   }
 
+  /**
+   * Inserts a new message record into SQLite.
+   *
+   * @param input - Message fields and optional binary media data.
+   * @returns Stored {@link ChatMessage}.
+   */
   insertMessage(input: InsertMessageInput): ChatMessage {
     const id = input.id || Bun.randomUUIDv7();
     const nowMs = Date.now();
@@ -352,6 +468,15 @@ export class MendelStore {
     return this.getMessage(id)!;
   }
 
+  /**
+   * Updates the text of an existing message and marks it as edited, or inserts
+   * a new incoming message if the target ID does not exist.
+   *
+   * @param id - Target message ID to edit.
+   * @param text - Replacement message text.
+   * @param fallback - Fallback instance and JID used if inserting a new record.
+   * @returns Updated or inserted {@link ChatMessage}.
+   */
   updateMessageText(
     id: string,
     text: string,
@@ -374,6 +499,13 @@ export class MendelStore {
     });
   }
 
+  /**
+   * Updates the outbound webhook delivery status and error message for a message.
+   *
+   * @param id - Message identifier.
+   * @param status - New delivery status (`"pending"`, `"delivered"`, or `"failed"`).
+   * @param error - Optional error message when delivery fails.
+   */
   updateWebhookStatus(
     id: string,
     status: "pending" | "delivered" | "failed",
@@ -386,10 +518,16 @@ export class MendelStore {
       .run(status, error, id);
   }
 
+  /**
+   * Deletes all stored messages from SQLite.
+   */
   clearMessages(): void {
     this.db.run("DELETE FROM messages");
   }
 
+  /**
+   * Closes the underlying SQLite database connection.
+   */
   close(): void {
     this.db.close();
   }

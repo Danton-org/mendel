@@ -1,3 +1,12 @@
+/**
+ * HTTP server module built on `Bun.serve`.
+ *
+ * Exposes the HTMX web chat interface, Server-Sent Events stream, binary media
+ * delivery endpoint, and Evolution API-compatible endpoints.
+ *
+ * @packageDocumentation
+ */
+
 import { resolve, join } from "node:path";
 import {
   formatJid,
@@ -9,13 +18,28 @@ import { getTranslator } from "./i18n";
 import { renderHeaderStatus, renderMessages, renderPage } from "./ui";
 import { dispatchWebhook, type InteractiveReplyMeta } from "./webhook";
 
+/**
+ * Configuration options for starting a `mendel` HTTP server instance.
+ */
 export interface ServerOptions {
+  /** TCP port to listen on (`0` for an ephemeral OS-assigned port). */
   port?: number;
+  /** Bind hostname or IP address. */
   hostname?: string;
+  /** Path to the SQLite database file, or `":memory:"`. */
   dbPath?: string;
+  /** Directory containing bundled static assets (`index.js`, `index.css`, fonts). */
   distDir?: string;
 }
 
+/**
+ * Infers a normalized {@link MediaType} from an explicit Evolution API
+ * `mediatype` string or MIME type.
+ *
+ * @param explicitType - Explicit `mediatype` value (e.g. `"image"`, `"video"`).
+ * @param mimetype - MIME type string (e.g. `"image/png"`, `"video/mp4"`).
+ * @returns Normalized {@link MediaType}.
+ */
 function inferMediaType(
   explicitType?: string | null,
   mimetype?: string | null
@@ -33,6 +57,12 @@ function inferMediaType(
   return "document";
 }
 
+/**
+ * Returns the default MIME type for a given {@link MediaType}.
+ *
+ * @param mediaType - Normalized media category.
+ * @returns Default MIME type string.
+ */
 function defaultMimetypeFor(mediaType: MediaType): string {
   switch (mediaType) {
     case "image":
@@ -46,6 +76,14 @@ function defaultMimetypeFor(mediaType: MediaType): string {
   }
 }
 
+/**
+ * Parses an Evolution API `media` string (HTTP URL, `data:` URI, or raw base64)
+ * into binary bytes or an external URL reference.
+ *
+ * @param rawMedia - Input media string from the API request body.
+ * @param fallbackMimetype - Fallback MIME type if none is embedded in a `data:` URI.
+ * @returns Decoded binary data, resolved MIME type, and optional external URL.
+ */
 function parseMediaString(
   rawMedia: string,
   fallbackMimetype: string
@@ -80,6 +118,13 @@ function parseMediaString(
   };
 }
 
+/**
+ * Wraps an HTML string in a UTF-8 `text/html` HTTP {@link Response}.
+ *
+ * @param html - Rendered HTML markup.
+ * @param status - HTTP status code (defaults to `200`).
+ * @returns HTTP {@link Response}.
+ */
 function htmlResponse(html: string, status = 200): Response {
   return new Response(html, {
     status,
@@ -87,6 +132,12 @@ function htmlResponse(html: string, status = 200): Response {
   });
 }
 
+/**
+ * Creates and starts a `mendel` HTTP server and SQLite store.
+ *
+ * @param options - Optional server, database, and static asset configuration.
+ * @returns Object containing the running `Bun.Server`, {@link MendelStore}, and `stop()` cleanup method.
+ */
 export function createMendelServer(options: ServerOptions = {}) {
   const store = new MendelStore(options.dbPath);
   const distDir =
@@ -100,6 +151,10 @@ export function createMendelServer(options: ServerOptions = {}) {
   const sseControllers = new Set<ReadableStreamDefaultController<Uint8Array>>();
   const encoder = new TextEncoder();
 
+  /**
+   * Increments the state version and broadcasts a `version` event to all
+   * connected Server-Sent Events clients.
+   */
   function bumpVersion(): void {
     version += 1;
     const payload = encoder.encode(`event: version\ndata: ${version}\n\n`);
@@ -112,6 +167,16 @@ export function createMendelServer(options: ServerOptions = {}) {
     }
   }
 
+  /**
+   * Handles incoming Evolution API media endpoints (`sendMedia`,
+   * `sendWhatsAppAudio`, `sendPtv`, `sendSticker`) supporting both
+   * `multipart/form-data` and `application/json` payloads.
+   *
+   * @param req - Incoming HTTP request.
+   * @param instance - Evolution API instance name from the route parameter.
+   * @param forcedType - Optional media type override for specialized endpoints.
+   * @returns Evolution API `201 Created` JSON response.
+   */
   async function handleSendMediaEndpoint(
     req: Request,
     instance: string,
@@ -988,6 +1053,10 @@ export function createMendelServer(options: ServerOptions = {}) {
   return {
     server,
     store,
+    /**
+     * Closes all active SSE streams, stops the HTTP server, and closes the
+     * SQLite database connection.
+     */
     stop() {
       for (const c of sseControllers) {
         try {

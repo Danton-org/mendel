@@ -1,3 +1,12 @@
+/**
+ * Application entrypoint for the `mendel` server.
+ *
+ * Ensures frontend assets in `dist/` are bundled before starting the HTTP
+ * server and listening for incoming connections.
+ *
+ * @packageDocumentation
+ */
+
 import { join, resolve } from "node:path";
 import { createMendelServer } from "./server";
 

@@ -1,6 +1,21 @@
+/**
+ * Media attachment UI rendering components for images, videos, audio, and
+ * downloadable documents.
+ *
+ * @packageDocumentation
+ */
+
 import type { TFunction } from "i18next";
 import type { ChatMessage } from "../../db";
 
+/**
+ * Renders the HTML media element (`<img>`, `<video>`, `<audio>`, or download
+ * button) for a chat message attachment.
+ *
+ * @param msg - Chat message record containing media metadata.
+ * @param t - Fixed locale translator function.
+ * @returns HTML markup for the media attachment, or an empty string if none.
+ */
 export function renderMedia(msg: ChatMessage, t: TFunction): string {
   if (!msg.mediaType) return "";
 

@@ -1,9 +1,24 @@
+/**
+ * Chat message bubble, webhook status indicator, and scrollable message feed
+ * UI components.
+ *
+ * @packageDocumentation
+ */
+
 import type { TFunction } from "i18next";
 import type { ChatMessage, MendelSettings } from "../../db";
 import { getTranslator } from "../../i18n";
 import { renderInteractive } from "./interactive";
 import { renderMedia } from "./media";
 
+/**
+ * Formats a Unix epoch timestamp (in seconds) into a localized 24-hour
+ * `HH:MM` time string.
+ *
+ * @param timestampSec - Unix timestamp in seconds.
+ * @param locale - BCP 47 locale tag (e.g. `"en-US"`, `"pt-BR"`, `"fr-FR"`).
+ * @returns Formatted `HH:MM` string.
+ */
 function formatTime(timestampSec: number, locale: string): string {
   const date = new Date(timestampSec * 1000);
   return date.toLocaleTimeString(locale, {
@@ -13,6 +28,14 @@ function formatTime(timestampSec: number, locale: string): string {
   });
 }
 
+/**
+ * Renders the empty-chat placeholder displayed when no messages exist in the
+ * database.
+ *
+ * @param settings - Current application settings.
+ * @param t - Fixed locale translator function.
+ * @returns HTML markup for the `.empty-state` card.
+ */
 export function renderEmptyState(
   settings: MendelSettings,
   t: TFunction
@@ -32,6 +55,14 @@ export function renderEmptyState(
   `;
 }
 
+/**
+ * Renders the outbound webhook delivery status icon and retry button for an
+ * outgoing message bubble.
+ *
+ * @param msg - Chat message record.
+ * @param t - Fixed locale translator function.
+ * @returns HTML markup for the status icon/retry button, or empty string for incoming messages.
+ */
 export function renderWebhookStatus(msg: ChatMessage, t: TFunction): string {
   if (msg.direction !== "outgoing") return "";
 
@@ -63,6 +94,16 @@ export function renderWebhookStatus(msg: ChatMessage, t: TFunction): string {
   }
 }
 
+/**
+ * Renders a single `.message-row` chat bubble including sender label, media
+ * attachment, text content, interactive controls, timestamp, and delivery
+ * status.
+ *
+ * @param msg - Chat message record to render.
+ * @param settings - Current application settings.
+ * @param t - Fixed locale translator function.
+ * @returns HTML markup for the message row.
+ */
 export function renderMessageItem(
   msg: ChatMessage,
   settings: MendelSettings,
@@ -103,6 +144,15 @@ export function renderMessageItem(
   `;
 }
 
+/**
+ * Renders the inner content of `#chat-messages` (either the empty state or the
+ * list of rendered message bubbles).
+ *
+ * @param messages - Chronological array of chat messages.
+ * @param settings - Current application settings.
+ * @param t - Fixed locale translator function.
+ * @returns HTML fragment for `#chat-messages`.
+ */
 export function renderMessages(
   messages: ChatMessage[],
   settings: MendelSettings,
@@ -114,6 +164,15 @@ export function renderMessages(
   return messages.map((msg) => renderMessageItem(msg, settings, t)).join("\n");
 }
 
+/**
+ * Renders the scrollable `<main class="chat-scroll">` container and its
+ * HTMX-bound `#chat-messages` region.
+ *
+ * @param messages - Chronological array of chat messages.
+ * @param settings - Current application settings.
+ * @param t - Fixed locale translator function.
+ * @returns HTML markup for the main chat feed.
+ */
 export function renderChatFeed(
   messages: ChatMessage[],
   settings: MendelSettings,

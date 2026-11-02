@@ -1,3 +1,9 @@
+/**
+ * Full-page HTML layout renderer for the `mendel` chat interface.
+ *
+ * @packageDocumentation
+ */
+
 import type { TFunction } from "i18next";
 import type { ChatMessage, MendelSettings } from "../../db";
 import { getTranslator } from "../../i18n";
@@ -6,6 +12,13 @@ import { renderHeader } from "../components/header";
 import { renderChatFeed } from "../components/messages";
 import { renderSettingsDialog } from "../components/settings-dialog";
 
+/**
+ * Renders the document `<head>` element linking the bundled stylesheet and
+ * script assets.
+ *
+ * @param t - Fixed locale translator function.
+ * @returns HTML markup for the `<head>` element.
+ */
 export function renderHead(t: TFunction): string {
   return `
     <head>
@@ -18,6 +31,16 @@ export function renderHead(t: TFunction): string {
   `;
 }
 
+/**
+ * Renders the complete HTML5 document for the `mendel` web chat interface by
+ * composing the head, header, scrollable message feed, composer footer, and
+ * settings dialog.
+ *
+ * @param messages - Chronological array of chat messages.
+ * @param settings - Current application settings.
+ * @param t - Fixed locale translator function.
+ * @returns Complete HTML document string.
+ */
 export function renderPage(
   messages: ChatMessage[],
   settings: MendelSettings,

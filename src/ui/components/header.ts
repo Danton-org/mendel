@@ -1,7 +1,21 @@
+/**
+ * Top-bar header UI components.
+ *
+ * @packageDocumentation
+ */
+
 import type { TFunction } from "i18next";
 import type { MendelSettings } from "../../db";
 import { getTranslator } from "../../i18n";
 
+/**
+ * Renders the header status line displaying the active instance name and
+ * target webhook URL.
+ *
+ * @param settings - Current application settings.
+ * @param t - Fixed locale translator function.
+ * @returns HTML markup for the `#header-status` fragment.
+ */
 export function renderHeaderStatus(
   settings: MendelSettings,
   t: TFunction = getTranslator()
@@ -14,6 +28,15 @@ export function renderHeaderStatus(
   return `<span class="status-chip">${instanceLabel}: <b>${instanceName}</b> &bull; ${webhookLabel}: <code>${webhookUrl}</code></span>`;
 }
 
+/**
+ * Renders the top navigation header bar containing the application title,
+ * instance/webhook status chip, and action buttons (clear chat, theme toggle,
+ * settings dialog trigger).
+ *
+ * @param settings - Current application settings.
+ * @param t - Fixed locale translator function.
+ * @returns HTML markup for the `<header class="chat-header">` element.
+ */
 export function renderHeader(
   settings: MendelSettings,
   t: TFunction = getTranslator()
