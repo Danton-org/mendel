@@ -105,19 +105,40 @@ export async function handleUiSendInteractivePost(
     ? String(form.get("buttonId"))
     : undefined;
   const rowId = form.get("rowId") ? String(form.get("rowId")) : undefined;
-  const pollOption = form.get("pollOption")
-    ? String(form.get("pollOption"))
-    : undefined;
+  const rawPollOptions = [
+    ...form.getAll("pollOption"),
+    ...form.getAll("pollOptions"),
+  ]
+    .map(String)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const pollOptions = rawPollOptions.length > 0 ? rawPollOptions : undefined;
+  const pollOption =
+    pollOptions && pollOptions.length === 1
+      ? pollOptions[0]
+      : form.get("pollOption")
+        ? String(form.get("pollOption"))
+        : undefined;
   const pollMessageId = form.get("pollMessageId")
     ? String(form.get("pollMessageId"))
     : undefined;
 
   const settings = ctx.store.getSettings();
+  const displayText =
+    text ||
+    (pollOptions && pollOptions.length > 0
+      ? pollOptions.join(", ")
+      : undefined) ||
+    buttonId ||
+    rowId ||
+    pollOption ||
+    "";
+
   const msg = ctx.store.insertMessage({
     instance: settings.instanceName,
     remoteJid: formatJid(settings.senderNumber),
     direction: "outgoing",
-    text: text || buttonId || rowId || pollOption || "",
+    text: displayText,
     webhookStatus: "pending",
   });
 
@@ -127,7 +148,8 @@ export async function handleUiSendInteractivePost(
   const replyMeta: InteractiveReplyMeta = {
     buttonId,
     rowId,
-    pollOption,
+    pollOption: pollOption ?? pollOptions?.[0],
+    pollOptions,
     pollMessageId,
   };
   void dispatchWebhook(ctx.store, msg.id, origin, ctx.bumpVersion, replyMeta);

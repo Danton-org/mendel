@@ -60,6 +60,10 @@ export const enUS = {
   pushNameField: "Sender Push Name",
   cancel: "Cancel",
   save: "Save",
+  vote: "Vote",
+  selectOne: "Select 1",
+  selectMultiple: "Select one or more",
+  selectUpTo: "Select up to {{count}}",
 } as const;
 
 /**
@@ -112,6 +116,10 @@ export const ptBR: Record<TranslationKeys, string> = {
   pushNameField: "Nome de Exibição do Remetente",
   cancel: "Cancelar",
   save: "Salvar",
+  vote: "Votar",
+  selectOne: "Selecione 1",
+  selectMultiple: "Selecione uma ou mais",
+  selectUpTo: "Selecione até {{count}}",
 };
 
 /**
@@ -159,6 +167,10 @@ export const frFR: Record<TranslationKeys, string> = {
   pushNameField: "Nom d'affichage de l'expéditeur",
   cancel: "Annuler",
   save: "Enregistrer",
+  vote: "Voter",
+  selectOne: "Sélectionnez 1",
+  selectMultiple: "Sélectionnez-en un ou plusieurs",
+  selectUpTo: "Sélectionnez jusqu'à {{count}}",
 };
 
 const i18nInstance = i18next.createInstance();

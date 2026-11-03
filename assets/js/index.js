@@ -498,6 +498,41 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  document.addEventListener("change", (event) => {
+    const target = event.target;
+    if (
+      !target ||
+      !(target instanceof HTMLInputElement) ||
+      !target.classList.contains("poll-checkbox")
+    ) {
+      return;
+    }
+
+    const form = target.closest(".poll-form");
+    if (!form) return;
+
+    const container = form.querySelector("[data-poll-selectable]");
+    const max = container
+      ? parseInt(container.getAttribute("data-poll-selectable") || "0", 10)
+      : 0;
+
+    const checkedBoxes = Array.from(
+      form.querySelectorAll(".poll-checkbox:checked")
+    );
+
+    if (max > 0 && checkedBoxes.length > max) {
+      target.checked = false;
+    }
+
+    const submitBtn = form.querySelector(".poll-vote-btn");
+    if (submitBtn instanceof HTMLButtonElement) {
+      const remainingChecked = form.querySelectorAll(
+        ".poll-checkbox:checked"
+      ).length;
+      submitBtn.disabled = remainingChecked === 0;
+    }
+  });
+
   document.addEventListener("paste", (e) => {
     if (
       !e.clipboardData ||

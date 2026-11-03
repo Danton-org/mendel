@@ -215,6 +215,78 @@ audio.message-media {
   margin: 0;
 }
 
+.poll-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+  max-width: 100%;
+}
+
+.poll-hint {
+  align-items: center;
+  color: var(--on-surface-variant);
+  display: flex;
+  font-size: 0.75rem;
+  font-weight: 500;
+  gap: 0.35rem;
+  opacity: 0.85;
+}
+
+.poll-hint i {
+  --_size: 1rem;
+  font-size: 1rem;
+}
+
+.poll-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  width: 100%;
+}
+
+.poll-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.poll-checkbox-label {
+  align-items: center;
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: 0.6rem;
+  cursor: pointer;
+  display: flex !important;
+  margin: 0;
+  padding: 0.4rem 0.65rem;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  user-select: none;
+  width: 100%;
+}
+
+.poll-checkbox-label:hover {
+  background: var(--surface-container);
+  border-color: var(--outline);
+}
+
+.poll-checkbox-label span {
+  flex: 1;
+  word-break: break-word;
+}
+
+.poll-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 0.2rem;
+}
+
+.poll-vote-btn {
+  margin: 0;
+}
+
 .chat-composer {
   background: var(--surface-container);
   border-top: 1px solid var(--outline-variant);

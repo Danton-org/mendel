@@ -4,7 +4,9 @@
  * @packageDocumentation
  */
 
+import type { TFunction } from "i18next";
 import type { InteractivePayload } from "../../db";
+import { getTranslator } from "../../i18n";
 
 /**
  * Renders a single HTMX interactive reply button that posts to
@@ -66,17 +68,60 @@ export function renderListInteractive(
 }
 
 /**
- * Renders clickable voting options for an Evolution API `sendPoll` message.
+ * Renders interactive voting options for an Evolution API `sendPoll` message,
+ * supporting single-choice one-tap buttons and multiple-choice checkbox forms.
  *
  * @param msgId - ID of the poll message being voted on.
- * @param options - Poll option strings.
- * @returns HTML markup for the `.interactive-options` container.
+ * @param poll - Poll interactive payload containing options and selectable count.
+ * @param t - Fixed locale translator function.
+ * @returns HTML markup for the poll options container or form.
  */
 export function renderPollInteractive(
   msgId: string,
-  options: string[]
+  poll: Extract<InteractivePayload, { type: "poll" }>,
+  t: TFunction
 ): string {
-  const items = options
+  const isMultiple = poll.selectableCount > 1 || poll.selectableCount === 0;
+
+  if (isMultiple) {
+    const hintText =
+      poll.selectableCount > 1
+        ? t("selectUpTo", { count: poll.selectableCount })
+        : t("selectMultiple");
+
+    const optionsHtml = poll.options
+      .map(
+        (opt) => `
+        <label class="checkbox poll-checkbox-label">
+          <input type="checkbox" name="pollOption" value="${Bun.escapeHTML(opt)}" class="poll-checkbox" />
+          <span>${Bun.escapeHTML(opt)}</span>
+        </label>`
+      )
+      .join("");
+
+    return `
+      <div class="poll-card">
+        <div class="poll-hint">
+          <i>checklist</i>
+          <span>${Bun.escapeHTML(hintText)}</span>
+        </div>
+        <form class="poll-form" hx-post="/ui/send-interactive" hx-target="#chat-messages" hx-swap="innerHTML">
+          <input type="hidden" name="pollMessageId" value="${Bun.escapeHTML(msgId)}" />
+          <div class="poll-options" data-poll-selectable="${poll.selectableCount}">
+            ${optionsHtml}
+          </div>
+          <div class="poll-actions">
+            <button type="submit" class="small primary round poll-vote-btn" disabled>
+              <i>how_to_vote</i>
+              <span>${Bun.escapeHTML(t("vote"))}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    `.trim();
+  }
+
+  const items = poll.options
     .map((opt) =>
       renderInteractiveButton(
         { pollMessageId: msgId, pollOption: opt, text: opt },
@@ -84,7 +129,18 @@ export function renderPollInteractive(
       )
     )
     .join("");
-  return `<div class="interactive-options">${items}</div>`;
+
+  return `
+    <div class="poll-card">
+      <div class="poll-hint">
+        <i>how_to_vote</i>
+        <span>${Bun.escapeHTML(t("selectOne"))}</span>
+      </div>
+      <div class="interactive-options">
+        ${items}
+      </div>
+    </div>
+  `.trim();
 }
 
 /**
@@ -93,11 +149,13 @@ export function renderPollInteractive(
  *
  * @param msgId - Message ID owning the interactive payload.
  * @param interactive - Interactive payload metadata.
+ * @param t - Optional locale translator function (defaults to `"en-US"`).
  * @returns HTML markup for the interactive controls.
  */
 export function renderInteractive(
   msgId: string,
-  interactive: InteractivePayload
+  interactive: InteractivePayload,
+  t: TFunction = getTranslator("en-US")
 ): string {
   switch (interactive.type) {
     case "buttons":
@@ -105,6 +163,6 @@ export function renderInteractive(
     case "list":
       return renderListInteractive(interactive.rows);
     case "poll":
-      return renderPollInteractive(msgId, interactive.options);
+      return renderPollInteractive(msgId, interactive, t);
   }
 }

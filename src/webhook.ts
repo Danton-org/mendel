@@ -16,8 +16,10 @@ export interface InteractiveReplyMeta {
   buttonId?: string;
   /** Selected row ID when replying to a list message. */
   rowId?: string;
-  /** Selected option text when voting on a poll message. */
+  /** Selected option text when voting on a single-choice poll message. */
   pollOption?: string;
+  /** Selected option texts when voting on a poll message. */
+  pollOptions?: string[];
   /** Original poll message ID being voted on. */
   pollMessageId?: string;
 }
@@ -98,14 +100,20 @@ export function buildWebhookPayload(
         selectedRowId: replyMeta.rowId,
       },
     };
-  } else if (replyMeta?.pollOption) {
+  } else if (replyMeta?.pollOptions?.length || replyMeta?.pollOption) {
     messageType = "pollUpdateMessage";
+    const selectedOptions =
+      replyMeta.pollOptions && replyMeta.pollOptions.length > 0
+        ? replyMeta.pollOptions
+        : replyMeta.pollOption
+          ? [replyMeta.pollOption]
+          : [];
     messageObj.pollUpdateMessage = {
       pollCreationMessageKey: {
         id: replyMeta.pollMessageId || "",
       },
       vote: {
-        selectedOptions: [replyMeta.pollOption],
+        selectedOptions,
       },
     };
   } else {

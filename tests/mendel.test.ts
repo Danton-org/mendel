@@ -371,4 +371,159 @@ describe("mendel server", () => {
       '<ul class="wa-list"><li>Item <strong>um</strong></li><li>Item <em>dois</em></li></ul>'
     );
   });
+
+  test("supports single-choice and multiple-choice polls with poll voting webhooks", async () => {
+    // 1. Single-choice poll (selectableCount: 1)
+    const singlePollRes = await fetch(
+      `${mendel.server.url.origin}/message/sendPoll/default`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          number: "5511988887777",
+          name: "Qual seu prato favorito?",
+          selectableCount: 1,
+          values: ["Pizza", "Hambúrguer", "Salada"],
+        }),
+      }
+    );
+    expect(singlePollRes.status).toBe(201);
+    const singlePollJson = (await singlePollRes.json()) as {
+      key: { id: string };
+    };
+    const singlePollId = singlePollJson.key.id;
+
+    const singleUiRes = await fetch(`${mendel.server.url.origin}/ui/messages`, {
+      headers: { "Accept-Language": "en-US" },
+    });
+    const singleUiHtml = await singleUiRes.text();
+    expect(singleUiHtml).toContain("📊 Qual seu prato favorito?");
+    expect(singleUiHtml).toContain("Select 1");
+    expect(singleUiHtml).toContain("Pizza");
+
+    // Vote on single-choice poll
+    const singleVoteForm = new FormData();
+    singleVoteForm.set("pollMessageId", singlePollId);
+    singleVoteForm.set("pollOption", "Pizza");
+    singleVoteForm.set("text", "Pizza");
+
+    const singleVoteRes = await fetch(
+      `${mendel.server.url.origin}/ui/send-interactive`,
+      {
+        method: "POST",
+        body: singleVoteForm,
+      }
+    );
+    expect(singleVoteRes.status).toBe(200);
+    const singleVoteHtml = await singleVoteRes.text();
+    expect(singleVoteHtml).toContain("Pizza");
+
+    await Bun.sleep(50);
+    expect(receivedWebhooks.length).toBeGreaterThanOrEqual(1);
+    const singleWh = receivedWebhooks[receivedWebhooks.length - 1]!;
+    expect(singleWh.body.event).toBe("messages.upsert");
+    const singleWhData = singleWh.body.data as Record<string, unknown>;
+    expect(singleWhData.messageType).toBe("pollUpdateMessage");
+    const singleWhMsg = singleWhData.message as {
+      pollUpdateMessage: {
+        pollCreationMessageKey: { id: string };
+        vote: { selectedOptions: string[] };
+      };
+    };
+    expect(singleWhMsg.pollUpdateMessage.pollCreationMessageKey.id).toBe(
+      singlePollId
+    );
+    expect(singleWhMsg.pollUpdateMessage.vote.selectedOptions).toEqual(["Pizza"]);
+
+    // 2. Multiple-choice poll with limited selectableCount (selectableCount: 2)
+    const multiPollRes = await fetch(
+      `${mendel.server.url.origin}/message/sendPoll/default`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          number: "5511988887777",
+          name: "Escolha até 2 opções",
+          selectableCount: 2,
+          values: ["Opção 1", "Opção 2", "Opção 3"],
+        }),
+      }
+    );
+    expect(multiPollRes.status).toBe(201);
+    const multiPollJson = (await multiPollRes.json()) as {
+      key: { id: string };
+    };
+    const multiPollId = multiPollJson.key.id;
+
+    const multiUiRes = await fetch(`${mendel.server.url.origin}/ui/messages`, {
+      headers: { "Accept-Language": "en-US" },
+    });
+    const multiUiHtml = await multiUiRes.text();
+    expect(multiUiHtml).toContain("Escolha até 2 opções");
+    expect(multiUiHtml).toContain("Select up to 2");
+    expect(multiUiHtml).toContain('data-poll-selectable="2"');
+    expect(multiUiHtml).toContain('class="poll-form"');
+    expect(multiUiHtml).toContain('type="checkbox"');
+    expect(multiUiHtml).toContain("Vote");
+
+    // Vote on multiple-choice poll with 2 options
+    const multiVoteForm = new FormData();
+    multiVoteForm.append("pollMessageId", multiPollId);
+    multiVoteForm.append("pollOption", "Opção 1");
+    multiVoteForm.append("pollOption", "Opção 2");
+
+    const multiVoteRes = await fetch(
+      `${mendel.server.url.origin}/ui/send-interactive`,
+      {
+        method: "POST",
+        body: multiVoteForm,
+      }
+    );
+    expect(multiVoteRes.status).toBe(200);
+    const multiVoteHtml = await multiVoteRes.text();
+    expect(multiVoteHtml).toContain("Opção 1, Opção 2");
+
+    await Bun.sleep(50);
+    const multiWh = receivedWebhooks[receivedWebhooks.length - 1]!;
+    const multiWhData = multiWh.body.data as Record<string, unknown>;
+    expect(multiWhData.messageType).toBe("pollUpdateMessage");
+    const multiWhMsg = multiWhData.message as {
+      pollUpdateMessage: {
+        pollCreationMessageKey: { id: string };
+        vote: { selectedOptions: string[] };
+      };
+    };
+    expect(multiWhMsg.pollUpdateMessage.pollCreationMessageKey.id).toBe(
+      multiPollId
+    );
+    expect(multiWhMsg.pollUpdateMessage.vote.selectedOptions).toEqual([
+      "Opção 1",
+      "Opção 2",
+    ]);
+
+    // 3. Unlimited multiple-choice poll (selectableCount: 0)
+    const unlimitedPollRes = await fetch(
+      `${mendel.server.url.origin}/message/sendPoll/default`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          number: "5511988887777",
+          name: "Quais tópicos te interessam?",
+          selectableCount: 0,
+          values: ["Tecnologia", "Design", "Negócios"],
+        }),
+      }
+    );
+    expect(unlimitedPollRes.status).toBe(201);
+    const unlimitedUiRes = await fetch(
+      `${mendel.server.url.origin}/ui/messages`,
+      {
+        headers: { "Accept-Language": "pt-BR" },
+      }
+    );
+    const unlimitedUiHtml = await unlimitedUiRes.text();
+    expect(unlimitedUiHtml).toContain("Selecione uma ou mais");
+    expect(unlimitedUiHtml).toContain("Votar");
+  });
 });

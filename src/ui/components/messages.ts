@@ -123,7 +123,7 @@ export function renderMessageItem(
     ? `<div class="message-text">${formatWhatsAppText(msg.text)}</div>`
     : "";
   const interactiveHtml = msg.interactive
-    ? renderInteractive(msg.id, msg.interactive)
+    ? renderInteractive(msg.id, msg.interactive, t)
     : "";
   const statusHtml = renderWebhookStatus(msg, t);
   const timeHtml = Bun.escapeHTML(formatTime(msg.timestamp, t("lang")));
