@@ -81,7 +81,7 @@ describe("mendel server", () => {
     expect(message.conversation).toBe("Olá, testando envio de mensagem");
   });
 
-  test("dispatches image and video messages with base64 and serves /media/:id", async () => {
+  test("dispatches image, video, and audio messages with base64 and serves /media/:id", async () => {
     const imgBytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
     const imgForm = new FormData();
     imgForm.set("text", "Foto do prato");
@@ -115,9 +115,26 @@ describe("mendel server", () => {
     const vidHtml = await vidRes.text();
     expect(vidHtml).toContain("<video class=\"message-media\"");
 
+    const audioBytes = new Uint8Array([79, 103, 103, 83, 0, 2, 0, 0]);
+    const audioForm = new FormData();
+    audioForm.set(
+      "media",
+      new File([audioBytes], "voice-message.ogg", {
+        type: "audio/ogg; codecs=opus",
+      })
+    );
+
+    const audioRes = await fetch(`${mendel.server.url.origin}/ui/send`, {
+      method: "POST",
+      body: audioForm,
+    });
+    expect(audioRes.status).toBe(200);
+    const audioHtml = await audioRes.text();
+    expect(audioHtml).toContain("<audio class=\"message-media\"");
+
     await Bun.sleep(50);
 
-    expect(receivedWebhooks).toHaveLength(2);
+    expect(receivedWebhooks).toHaveLength(3);
 
     const imgWhData = receivedWebhooks[0]!.body.data as Record<string, unknown>;
     const imgWhMsg = imgWhData.message as Record<string, unknown>;
@@ -135,6 +152,14 @@ describe("mendel server", () => {
       "Vídeo da refeição"
     );
 
+    const audioWhData = receivedWebhooks[2]!.body.data as Record<string, unknown>;
+    const audioWhMsg = audioWhData.message as Record<string, unknown>;
+    expect(audioWhData.messageType).toBe("audioMessage");
+    expect(audioWhMsg.base64).toBe(audioBytes.toBase64());
+    const audioMsgObj = audioWhMsg.audioMessage as Record<string, unknown>;
+    expect(audioMsgObj.mimetype).toContain("audio/ogg");
+    expect(audioMsgObj.ptt).toBe(true);
+
     // Verify /media/:id endpoint and Range support
     const messages = mendel.store.listMessages();
     const vidMsg = messages[1]!;
@@ -148,6 +173,13 @@ describe("mendel server", () => {
     expect(rangeRes.headers.get("content-type")).toBe("video/mp4");
     const partial = new Uint8Array(await rangeRes.arrayBuffer());
     expect(partial).toEqual(vidBytes.subarray(0, 4));
+
+    const audioMsg = messages[2]!;
+    const audioMediaRes = await fetch(
+      `${mendel.server.url.origin}/media/${audioMsg.id}`
+    );
+    expect(audioMediaRes.status).toBe(200);
+    expect(audioMediaRes.headers.get("content-type")).toContain("audio/ogg");
   });
 
   test("handles Evolution API sendText, updateMessage, sendMedia, and sendButtons", async () => {
@@ -228,7 +260,22 @@ describe("mendel server", () => {
     );
     expect(sendMediaRes.status).toBe(201);
 
-    // 4. sendButtons & interactive reply
+    // 4. sendWhatsAppAudio (base64 audio from service)
+    const sampleAudio = new Uint8Array([79, 103, 103, 83]);
+    const sendAudioRes = await fetch(
+      `${mendel.server.url.origin}/message/sendWhatsAppAudio/default`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          number: "5511988887777",
+          audio: sampleAudio.toBase64(),
+        }),
+      }
+    );
+    expect(sendAudioRes.status).toBe(201);
+
+    // 5. sendButtons & interactive reply
     const sendBtnsRes = await fetch(
       `${mendel.server.url.origin}/message/sendButtons/default`,
       {
@@ -252,6 +299,7 @@ describe("mendel server", () => {
     const uiHtml = await uiMessagesRes.text();
     expect(uiHtml).toContain("✅ Mensagem atualizada!");
     expect(uiHtml).toContain("Gráfico semanal");
+    expect(uiHtml).toContain("<audio class=\"message-media\"");
     expect(uiHtml).toContain("confirm_yes");
   });
 

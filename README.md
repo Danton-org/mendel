@@ -8,7 +8,7 @@ Web-based chat interface and drop-in [Evolution API](https://github.com/evolutio
 
 - **Outbound Webhooks (`messages.upsert`)**: Messages sent in the chat UI are dispatched as Evolution API-compatible webhook payloads (`conversation`, `imageMessage`, `videoMessage`, `buttonsResponseMessage`, `listResponseMessage`, `pollUpdateMessage`) with base64 media included.
 - **Inbound Evolution API Endpoints**: Implements `/message/sendText/:instance`, `/message/sendMedia/:instance`, `/chat/updateMessage/:instance`, `/message/sendButtons/:instance`, `/message/sendList/:instance`, `/message/sendPoll/:instance`, and instance/webhook management endpoints.
-- **Media Support**: Send and receive text, images, and videos.
+- **Media Support**: Send and receive text, images, videos, and audio (voice messages).
 - **Zero External Services**: Built on `Bun.serve` and `bun:sqlite`, with an HTMX + Beer CSS (`#cf5114` theme) web interface.
 
 ## Configuration

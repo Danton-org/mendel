@@ -2,7 +2,8 @@
  * Client-side script for the `mendel` web chat interface.
  *
  * Initializes HTMX and Beer CSS, manages light/dark theme persistence,
- * previews attached images and videos, and listens for live Server-Sent Events.
+ * previews attached images, videos, and audio files, provides WhatsApp-style
+ * voice message recording, and listens for live Server-Sent Events.
  *
  * @packageDocumentation
  */
@@ -57,6 +58,41 @@ window.scrollToBottom = function (force = false) {
 };
 
 /**
+ * Toggles visibility between the send button and the voice recording button
+ * based on whether text has been entered, media is attached, or voice recording
+ * is active.
+ */
+function updateComposerButtons() {
+  const textInput = document.getElementById("message-text-input");
+  const fileInput = document.getElementById("media-input");
+  const sendBtn = document.getElementById("send-button");
+  const micBtn = document.getElementById("mic-button");
+  const voiceBar = document.getElementById("voice-recording-bar");
+
+  if (!sendBtn || !micBtn) return;
+
+  const isRecording = voiceBar && voiceBar.classList.contains("active");
+  if (isRecording) {
+    sendBtn.style.display = "inline-flex";
+    micBtn.style.display = "none";
+    return;
+  }
+
+  const hasText = Boolean(textInput && textInput.value.trim().length > 0);
+  const hasFile = Boolean(
+    fileInput && fileInput.files && fileInput.files.length > 0
+  );
+
+  if (hasText || hasFile) {
+    sendBtn.style.display = "inline-flex";
+    micBtn.style.display = "none";
+  } else {
+    sendBtn.style.display = "none";
+    micBtn.style.display = "inline-flex";
+  }
+}
+
+/**
  * Clears the selected media file input and hides `#media-preview-bar`.
  */
 window.clearMediaSelection = function () {
@@ -76,11 +112,13 @@ window.clearMediaSelection = function () {
   if (previewIcon) {
     previewIcon.style.display = "inline-flex";
   }
+
+  updateComposerButtons();
 };
 
 /**
- * Updates `#media-preview-bar` with the selected image or video file metadata
- * and thumbnail.
+ * Updates `#media-preview-bar` with the selected image, video, or audio file
+ * metadata and thumbnail.
  *
  * @param file - Selected `File` object, or `undefined` to clear the preview.
  */
@@ -114,11 +152,299 @@ function updateMediaPreview(file) {
   } else {
     if (previewThumb) previewThumb.style.display = "none";
     if (previewIcon) {
-      previewIcon.textContent = file.type.startsWith("video/")
-        ? "movie"
-        : "attach_file";
+      if (file.type.startsWith("video/")) {
+        previewIcon.textContent = "movie";
+      } else if (file.type.startsWith("audio/")) {
+        previewIcon.textContent = "audiotrack";
+      } else {
+        previewIcon.textContent = "attach_file";
+      }
       previewIcon.style.display = "inline-flex";
     }
+  }
+
+  updateComposerButtons();
+}
+
+/** Active `MediaRecorder` instance during audio recording. */
+let activeMediaRecorder = null;
+/** Recorded audio data chunks. */
+let recordedAudioChunks = [];
+/** Timer interval ID for updating recording duration. */
+let recordingTimerInterval = null;
+/** Timestamp in milliseconds when the current recording started. */
+let recordingStartTimeMs = 0;
+/** Completed `Blob` of recorded audio. */
+let recordedAudioBlob = null;
+/** Active microphone `MediaStream`. */
+let activeAudioStream = null;
+
+/**
+ * Resolves the preferred audio container MIME type supported by the browser.
+ *
+ * @returns Supported audio MIME type string.
+ */
+function getSupportedAudioMimeType() {
+  const candidates = [
+    "audio/webm;codecs=opus",
+    "audio/ogg;codecs=opus",
+    "audio/webm",
+    "audio/mp4",
+    "audio/aac",
+  ];
+  if (typeof MediaRecorder === "undefined" || !MediaRecorder.isTypeSupported) {
+    return "";
+  }
+  for (const candidate of candidates) {
+    if (MediaRecorder.isTypeSupported(candidate)) {
+      return candidate;
+    }
+  }
+  return "";
+}
+
+/**
+ * Formats a duration in seconds as an `MM:SS` timer string.
+ *
+ * @param totalSeconds - Elapsed time in seconds.
+ * @returns Formatted `MM:SS` string.
+ */
+function formatRecordingDuration(totalSeconds) {
+  const mins = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
+  const secs = String(totalSeconds % 60).padStart(2, "0");
+  return `${mins}:${secs}`;
+}
+
+/**
+ * Initiates audio recording via the browser's `MediaRecorder` API and
+ * transitions the composer into the WhatsApp-style recording bar.
+ *
+ * @returns Promise that resolves once recording has started.
+ */
+async function startVoiceRecording() {
+  if (
+    !navigator.mediaDevices ||
+    typeof navigator.mediaDevices.getUserMedia !== "function"
+  ) {
+    const form = document.getElementById("chat-form");
+    const errorMsg =
+      form?.getAttribute("data-mic-error") ||
+      "Microphone access is not supported by your browser or in this context.";
+    alert(errorMsg);
+    return;
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    activeAudioStream = stream;
+    recordedAudioChunks = [];
+    recordedAudioBlob = null;
+
+    const mimeType = getSupportedAudioMimeType();
+    const options = mimeType ? { mimeType } : undefined;
+    activeMediaRecorder = new MediaRecorder(stream, options);
+
+    activeMediaRecorder.ondataavailable = (event) => {
+      if (event.data && event.data.size > 0) {
+        recordedAudioChunks.push(event.data);
+      }
+    };
+
+    activeMediaRecorder.onstop = () => {
+      const finalType =
+        activeMediaRecorder?.mimeType || mimeType || "audio/webm";
+      recordedAudioBlob = new Blob(recordedAudioChunks, { type: finalType });
+      const previewAudio = document.getElementById("voice-preview-audio");
+      if (previewAudio) {
+        previewAudio.src = URL.createObjectURL(recordedAudioBlob);
+      }
+    };
+
+    activeMediaRecorder.start(200);
+
+    const textWrapper = document.getElementById("composer-text-wrapper");
+    const attachBtn = document.getElementById("attach-button");
+    const voiceBar = document.getElementById("voice-recording-bar");
+    const voiceStatus = document.getElementById("voice-status");
+    const previewAudio = document.getElementById("voice-preview-audio");
+    const stopBtn = document.getElementById("voice-stop-btn");
+    const timer = document.getElementById("voice-timer");
+
+    if (textWrapper) textWrapper.style.display = "none";
+    if (attachBtn) attachBtn.style.display = "none";
+    if (voiceBar) {
+      voiceBar.classList.add("active");
+      voiceBar.style.display = "flex";
+    }
+    if (voiceStatus) voiceStatus.style.display = "flex";
+    if (previewAudio) {
+      previewAudio.pause();
+      previewAudio.removeAttribute("src");
+      previewAudio.style.display = "none";
+    }
+    if (stopBtn) stopBtn.style.display = "inline-flex";
+    if (timer) timer.textContent = "00:00";
+
+    updateComposerButtons();
+
+    recordingStartTimeMs = Date.now();
+    if (recordingTimerInterval) clearInterval(recordingTimerInterval);
+    recordingTimerInterval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - recordingStartTimeMs) / 1000);
+      if (timer) timer.textContent = formatRecordingDuration(elapsed);
+    }, 500);
+  } catch (err) {
+    const form = document.getElementById("chat-form");
+    const errorMsg =
+      form?.getAttribute("data-mic-error") ||
+      "Microphone access was denied or is not available.";
+    alert(errorMsg);
+    cancelVoiceRecording();
+  }
+}
+
+/**
+ * Stops live audio recording and switches the recording bar to audio preview
+ * mode, allowing the user to listen to their voice message before sending.
+ */
+function stopVoiceRecordingForPreview() {
+  if (recordingTimerInterval) {
+    clearInterval(recordingTimerInterval);
+    recordingTimerInterval = null;
+  }
+
+  if (activeMediaRecorder && activeMediaRecorder.state === "recording") {
+    activeMediaRecorder.stop();
+  }
+
+  if (activeAudioStream) {
+    activeAudioStream.getTracks().forEach((track) => track.stop());
+    activeAudioStream = null;
+  }
+
+  const voiceStatus = document.getElementById("voice-status");
+  const previewAudio = document.getElementById("voice-preview-audio");
+  const stopBtn = document.getElementById("voice-stop-btn");
+
+  if (voiceStatus) voiceStatus.style.display = "none";
+  if (stopBtn) stopBtn.style.display = "none";
+  if (previewAudio) previewAudio.style.display = "inline-flex";
+}
+
+/**
+ * Cancels active audio recording, discards any captured audio data, stops the
+ * microphone stream, and restores the standard composer view.
+ */
+function cancelVoiceRecording() {
+  if (recordingTimerInterval) {
+    clearInterval(recordingTimerInterval);
+    recordingTimerInterval = null;
+  }
+
+  if (activeMediaRecorder && activeMediaRecorder.state !== "inactive") {
+    try {
+      activeMediaRecorder.stop();
+    } catch {
+      // ignore
+    }
+  }
+
+  if (activeAudioStream) {
+    activeAudioStream.getTracks().forEach((track) => track.stop());
+    activeAudioStream = null;
+  }
+
+  recordedAudioChunks = [];
+  recordedAudioBlob = null;
+  activeMediaRecorder = null;
+
+  const textWrapper = document.getElementById("composer-text-wrapper");
+  const attachBtn = document.getElementById("attach-button");
+  const voiceBar = document.getElementById("voice-recording-bar");
+  const previewAudio = document.getElementById("voice-preview-audio");
+
+  if (previewAudio) {
+    previewAudio.pause();
+    previewAudio.removeAttribute("src");
+    previewAudio.style.display = "none";
+  }
+
+  if (voiceBar) {
+    voiceBar.classList.remove("active");
+    voiceBar.style.display = "none";
+  }
+
+  if (textWrapper) textWrapper.style.display = "";
+  if (attachBtn) attachBtn.style.display = "";
+
+  updateComposerButtons();
+}
+
+/**
+ * Finalizes the audio recording (if still in progress), attaches the audio
+ * file to `#media-input`, and submits the form to `/ui/send`.
+ *
+ * @returns Promise that resolves once the recording has been submitted.
+ */
+async function finishAndSendVoiceRecording() {
+  if (activeMediaRecorder && activeMediaRecorder.state === "recording") {
+    if (recordingTimerInterval) {
+      clearInterval(recordingTimerInterval);
+      recordingTimerInterval = null;
+    }
+
+    await new Promise((resolve) => {
+      if (!activeMediaRecorder) {
+        resolve(null);
+        return;
+      }
+      activeMediaRecorder.onstop = () => {
+        const mimeType =
+          activeMediaRecorder?.mimeType ||
+          getSupportedAudioMimeType() ||
+          "audio/webm";
+        recordedAudioBlob = new Blob(recordedAudioChunks, { type: mimeType });
+        resolve(null);
+      };
+      activeMediaRecorder.stop();
+    });
+  }
+
+  if (activeAudioStream) {
+    activeAudioStream.getTracks().forEach((track) => track.stop());
+    activeAudioStream = null;
+  }
+
+  if (!recordedAudioBlob || recordedAudioBlob.size === 0) {
+    cancelVoiceRecording();
+    return;
+  }
+
+  const mimeType = recordedAudioBlob.type || "audio/ogg";
+  let extension = "ogg";
+  if (mimeType.includes("mp4")) {
+    extension = "mp4";
+  } else if (mimeType.includes("webm")) {
+    extension = "webm";
+  }
+
+  const audioFile = new File([recordedAudioBlob], `voice-message.${extension}`, {
+    type: mimeType,
+  });
+
+  const fileInput = document.getElementById("media-input");
+  const chatForm = document.getElementById("chat-form");
+
+  if (fileInput && typeof DataTransfer !== "undefined") {
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(audioFile);
+    fileInput.files = dataTransfer.files;
+  }
+
+  cancelVoiceRecording();
+
+  if (chatForm) {
+    htmx.trigger(chatForm, "submit");
   }
 }
 
@@ -128,12 +454,47 @@ document.addEventListener("DOMContentLoaded", () => {
   applyTheme(saved || (prefersDark ? "dark" : "light"));
 
   window.scrollToBottom(true);
+  updateComposerButtons();
 
   const fileInput = document.getElementById("media-input");
   if (fileInput) {
     fileInput.addEventListener("change", () => {
       const file = fileInput.files && fileInput.files[0];
       updateMediaPreview(file);
+    });
+  }
+
+  const textInput = document.getElementById("message-text-input");
+  if (textInput) {
+    textInput.addEventListener("input", updateComposerButtons);
+  }
+
+  const micBtn = document.getElementById("mic-button");
+  if (micBtn) {
+    micBtn.addEventListener("click", () => {
+      void startVoiceRecording();
+    });
+  }
+
+  const voiceCancelBtn = document.getElementById("voice-cancel-btn");
+  if (voiceCancelBtn) {
+    voiceCancelBtn.addEventListener("click", cancelVoiceRecording);
+  }
+
+  const voiceStopBtn = document.getElementById("voice-stop-btn");
+  if (voiceStopBtn) {
+    voiceStopBtn.addEventListener("click", stopVoiceRecordingForPreview);
+  }
+
+  const chatForm = document.getElementById("chat-form");
+  if (chatForm) {
+    chatForm.addEventListener("submit", (event) => {
+      const voiceBar = document.getElementById("voice-recording-bar");
+      if (voiceBar && voiceBar.classList.contains("active")) {
+        event.preventDefault();
+        event.stopPropagation();
+        void finishAndSendVoiceRecording();
+      }
     });
   }
 
@@ -146,9 +507,13 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     const file = e.clipboardData.files[0];
-    if (file.type.startsWith("image/") || file.type.startsWith("video/")) {
+    if (
+      file.type.startsWith("image/") ||
+      file.type.startsWith("video/") ||
+      file.type.startsWith("audio/")
+    ) {
       const input = document.getElementById("media-input");
-      if (input) {
+      if (input && typeof DataTransfer !== "undefined") {
         const dt = new DataTransfer();
         dt.items.add(file);
         input.files = dt.files;
@@ -188,6 +553,7 @@ document.addEventListener("htmx:afterRequest", (evt) => {
       textInput.focus();
     }
     window.clearMediaSelection();
+    updateComposerButtons();
     window.scrollToBottom(true);
   }
 });

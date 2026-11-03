@@ -25,11 +25,13 @@ export interface ParsedMediaResult {
  *
  * @param explicitType - Explicit `mediatype` value (e.g. `"image"`, `"video"`).
  * @param mimetype - MIME type string (e.g. `"image/png"`, `"video/mp4"`).
+ * @param filename - Optional filename used to infer category by extension.
  * @returns Normalized {@link MediaType}.
  */
 export function inferMediaType(
   explicitType?: string | null,
-  mimetype?: string | null
+  mimetype?: string | null,
+  filename?: string | null
 ): MediaType {
   const t = (explicitType || "").toLowerCase();
   if (t === "image" || t === "sticker") return "image";
@@ -41,6 +43,12 @@ export function inferMediaType(
   if (m.startsWith("image/")) return "image";
   if (m.startsWith("video/")) return "video";
   if (m.startsWith("audio/")) return "audio";
+
+  const fn = (filename || "").toLowerCase();
+  if (/\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(fn)) return "image";
+  if (/\.(mp4|mov|avi|mkv)$/i.test(fn)) return "video";
+  if (/\.(ogg|opus|mp3|wav|m4a|aac|oga|flac|weba)$/i.test(fn)) return "audio";
+
   return "document";
 }
 

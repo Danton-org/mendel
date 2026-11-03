@@ -68,6 +68,7 @@ export function buildWebhookPayload(
     messageObj.audioMessage = {
       mimetype: msg.mediaMimetype || "audio/ogg; codecs=opus",
       url: `${serverUrl}/media/${msg.id}`,
+      ptt: true,
     };
     if (mediaBytes) {
       messageObj.base64 = mediaBytes.toBase64();

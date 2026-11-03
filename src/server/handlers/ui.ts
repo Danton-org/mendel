@@ -58,9 +58,9 @@ export async function handleUiSendPost(
 
   if (fileEntry instanceof File && fileEntry.size > 0) {
     mediaData = new Uint8Array(await fileEntry.arrayBuffer());
-    mediaMimetype = fileEntry.type || "application/octet-stream";
     mediaFilename = fileEntry.name || "attachment";
-    mediaType = inferMediaType(null, mediaMimetype);
+    mediaMimetype = fileEntry.type || "application/octet-stream";
+    mediaType = inferMediaType(null, mediaMimetype, mediaFilename);
   }
 
   if (!text && !mediaData) {

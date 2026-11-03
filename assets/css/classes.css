@@ -176,7 +176,13 @@ video.message-media {
 }
 
 audio.message-media {
+  border-radius: 2rem;
+  display: block;
+  height: 2.75rem;
+  margin-bottom: 0.25rem;
+  max-width: 100%;
   min-width: 16rem;
+  width: 20rem;
 }
 
 .message-meta {
@@ -227,6 +233,66 @@ audio.message-media {
 .composer-input-field {
   flex: 1;
   margin: 0 !important;
+}
+
+.voice-recording-bar {
+  align-items: center;
+  background: var(--surface-container-high);
+  border-radius: 2rem;
+  display: flex;
+  flex: 1;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0.25rem 0.6rem;
+}
+
+.voice-status {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  gap: 0.6rem;
+}
+
+.recording-pulse {
+  background-color: var(--error);
+  border-radius: 50%;
+  display: inline-block;
+  height: 0.75rem;
+  min-width: 0.75rem;
+  width: 0.75rem;
+  animation: pulse-red 1.2s infinite ease-in-out;
+}
+
+@keyframes pulse-red {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+}
+
+.voice-timer {
+  color: var(--on-surface);
+  font-family: monospace;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.voice-preview-audio {
+  flex: 1;
+  height: 2.25rem;
+  max-width: 100%;
+}
+
+.composer-form button.circle {
+  flex-shrink: 0;
 }
 
 .media-preview-bar {

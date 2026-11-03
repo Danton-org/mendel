@@ -9,7 +9,7 @@
 1. Connect `mendel` as a webhook producer and Evolution API drop-in endpoint to a service designed to work with Evolution API.
 2. Messages sent in the `mendel` chat interface are forwarded as Evolution API-compatible webhook payloads (`MESSAGES_UPSERT`) to the target service.
 3. Outbound API calls made by the service (such as `/message/sendText/:instance`, `/message/sendMedia/:instance`, etc.) are received by `mendel` and rendered in the chat interface as replies.
-4. Supports sending and receiving text, images, and videos.
+4. Supports sending and receiving text, images, videos, and audio (voice messages).
 
 ## Technology Stack
 

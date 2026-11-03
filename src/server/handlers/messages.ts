@@ -107,15 +107,15 @@ export async function handleSendMediaEndpoint(
         null;
       mimetype =
         rawMimetype || fileEntry.type || defaultMimetypeFor(mediaType);
-      mediaType = inferMediaType(rawMediatype, mimetype);
+      mediaType = inferMediaType(rawMediatype, mimetype, filename);
     } else if (typeof fileEntry === "string" && fileEntry.trim()) {
-      mediaType = inferMediaType(rawMediatype, rawMimetype);
+      filename = form.get("fileName") ? String(form.get("fileName")) : null;
+      mediaType = inferMediaType(rawMediatype, rawMimetype, filename);
       mimetype = rawMimetype || defaultMimetypeFor(mediaType);
       const parsed = parseMediaString(fileEntry, mimetype);
       mediaData = parsed.data;
       mimetype = parsed.mimetype;
       mediaUrl = parsed.mediaUrl;
-      filename = form.get("fileName") ? String(form.get("fileName")) : null;
     }
   } else {
     const body = await parseJsonBody(req);
@@ -126,7 +126,7 @@ export async function handleSendMediaEndpoint(
       typeof body.mediatype === "string" ? body.mediatype : forcedType;
     const rawMimetype =
       typeof body.mimetype === "string" ? body.mimetype : null;
-    mediaType = inferMediaType(rawMediatype, rawMimetype);
+    mediaType = inferMediaType(rawMediatype, rawMimetype, filename);
     mimetype = rawMimetype || defaultMimetypeFor(mediaType);
 
     const rawMedia =
