@@ -48,6 +48,9 @@ export async function handleUiSendPost(
   const form = await req.formData();
   const text = String(form.get("text") || "").trim();
   const fileEntry = form.get("media");
+  const explicitMediaType = form.get("mediaType")
+    ? String(form.get("mediaType"))
+    : null;
   const settings = ctx.store.getSettings();
   const t = getTranslator(req);
 
@@ -60,7 +63,13 @@ export async function handleUiSendPost(
     mediaData = new Uint8Array(await fileEntry.arrayBuffer());
     mediaFilename = fileEntry.name || "attachment";
     mediaMimetype = fileEntry.type || "application/octet-stream";
-    mediaType = inferMediaType(null, mediaMimetype, mediaFilename);
+    if (
+      mediaMimetype.startsWith("video/") &&
+      (explicitMediaType === "audio" || mediaFilename.includes("voice"))
+    ) {
+      mediaMimetype = mediaMimetype.replace(/^video\//, "audio/");
+    }
+    mediaType = inferMediaType(explicitMediaType, mediaMimetype, mediaFilename);
   }
 
   if (!text && !mediaData) {

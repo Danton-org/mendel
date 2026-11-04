@@ -40,14 +40,21 @@ export function inferMediaType(
   if (t === "document") return "document";
 
   const m = (mimetype || "").toLowerCase();
-  if (m.startsWith("image/")) return "image";
-  if (m.startsWith("video/")) return "video";
-  if (m.startsWith("audio/")) return "audio";
-
   const fn = (filename || "").toLowerCase();
+
+  if (fn.startsWith("voice-") || fn.includes("voice-message")) return "audio";
+  if (m.startsWith("image/")) return "image";
+  if (m.startsWith("audio/")) return "audio";
+  if (m.startsWith("video/")) {
+    if (fn.includes("audio") || fn.includes("voice") || m.includes("opus")) {
+      return "audio";
+    }
+    return "video";
+  }
+
   if (/\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(fn)) return "image";
   if (/\.(mp4|mov|avi|mkv)$/i.test(fn)) return "video";
-  if (/\.(ogg|opus|mp3|wav|m4a|aac|oga|flac|weba)$/i.test(fn)) return "audio";
+  if (/\.(ogg|opus|mp3|wav|m4a|aac|oga|flac|weba|webm)$/i.test(fn)) return "audio";
 
   return "document";
 }

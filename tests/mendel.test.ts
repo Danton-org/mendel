@@ -159,6 +159,8 @@ describe("mendel server", () => {
     const audioMsgObj = audioWhMsg.audioMessage as Record<string, unknown>;
     expect(audioMsgObj.mimetype).toContain("audio/ogg");
     expect(audioMsgObj.ptt).toBe(true);
+    expect(audioMsgObj.base64).toBe(audioBytes.toBase64());
+    expect(audioWhData.base64).toBe(audioBytes.toBase64());
 
     // Verify /media/:id endpoint and Range support
     const messages = mendel.store.listMessages();
@@ -180,6 +182,31 @@ describe("mendel server", () => {
     );
     expect(audioMediaRes.status).toBe(200);
     expect(audioMediaRes.headers.get("content-type")).toContain("audio/ogg");
+
+    // Verify /chat/getBase64FromMediaMessage/:instance endpoint
+    const getBase64Res = await fetch(
+      `${mendel.server.url.origin}/chat/getBase64FromMediaMessage/default`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: {
+            key: {
+              id: audioMsg.id,
+            },
+          },
+        }),
+      }
+    );
+    expect(getBase64Res.status).toBe(200);
+    const getBase64Json = (await getBase64Res.json()) as {
+      mediaType: string;
+      base64: string;
+      mimetype: string;
+    };
+    expect(getBase64Json.mediaType).toBe("audioMessage");
+    expect(getBase64Json.base64).toBe(audioBytes.toBase64());
+    expect(getBase64Json.mimetype).toContain("audio/ogg");
   });
 
   test("handles Evolution API sendText, updateMessage, sendMedia, and sendButtons", async () => {
@@ -525,5 +552,83 @@ describe("mendel server", () => {
     const unlimitedUiHtml = await unlimitedUiRes.text();
     expect(unlimitedUiHtml).toContain("Selecione uma ou mais");
     expect(unlimitedUiHtml).toContain("Votar");
+  });
+
+  test("uploads voice recording from UI and allows downstream service to fetch via /chat/getBase64FromMediaMessage", async () => {
+    const voiceBytes = new Uint8Array([26, 69, 223, 163, 159, 66, 134, 129]);
+    const form = new FormData();
+    form.append("mediaType", "audio");
+    form.append(
+      "media",
+      new File([voiceBytes], "voice-message.webm", {
+        type: "video/webm; codecs=opus",
+      })
+    );
+
+    const res = await fetch(`${mendel.server.url.origin}/ui/send`, {
+      method: "POST",
+      body: form,
+    });
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("<audio class=\"message-media\"");
+
+    await Bun.sleep(50);
+    expect(receivedWebhooks.length).toBeGreaterThanOrEqual(1);
+    const wh = receivedWebhooks[receivedWebhooks.length - 1]!;
+    expect(wh.body.event).toBe("messages.upsert");
+    const data = wh.body.data as Record<string, unknown>;
+    expect(data.messageType).toBe("audioMessage");
+    const key = data.key as { id: string };
+    const msgObj = data.message as {
+      audioMessage: { mimetype: string; ptt: boolean; base64: string };
+      base64: string;
+    };
+    expect(msgObj.audioMessage.ptt).toBe(true);
+    expect(msgObj.audioMessage.mimetype).toContain("audio/");
+    expect(msgObj.audioMessage.base64).toBe(voiceBytes.toBase64());
+    expect(msgObj.base64).toBe(voiceBytes.toBase64());
+    expect(data.base64).toBe(voiceBytes.toBase64());
+
+    // Verify service can retrieve base64 via POST /chat/getBase64FromMediaMessage/:instance
+    const getB64Res = await fetch(
+      `${mendel.server.url.origin}/chat/getBase64FromMediaMessage/default`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: {
+            key: {
+              id: key.id,
+            },
+          },
+        }),
+      }
+    );
+    expect(getB64Res.status).toBe(200);
+    const getB64Json = (await getB64Res.json()) as {
+      status: number;
+      mediaType: string;
+      base64: string;
+    };
+    expect(getB64Json.status).toBe(200);
+    expect(getB64Json.mediaType).toBe("audioMessage");
+    expect(getB64Json.base64).toBe(voiceBytes.toBase64());
+
+    // Verify service can find messages via POST /chat/findMessages/:instance
+    const findRes = await fetch(
+      `${mendel.server.url.origin}/chat/findMessages/default`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }
+    );
+    expect(findRes.status).toBe(200);
+    const findList = (await findRes.json()) as Array<{
+      id: string;
+      messageType: string;
+    }>;
+    expect(findList.some((m) => m.id === key.id && m.messageType === "audioMessage")).toBe(true);
   });
 });

@@ -531,3 +531,145 @@ export async function handleSendPollPost(
     { status: 201 }
   );
 }
+
+/**
+ * Handles `POST /chat/getBase64FromMediaMessage/:instance` (and `/chat/getBase64FromMediaMessage`),
+ * extracting a stored media attachment and returning its Base64 string and metadata
+ * according to the Evolution API schema.
+ *
+ * @param ctx - Shared server context.
+ * @param req - Incoming HTTP request with `:instance` route parameter.
+ * @returns Evolution API `200 OK` JSON response with base64 data, or `404 Not Found`.
+ */
+export async function handleGetBase64FromMediaMessagePost(
+  ctx: ServerContext,
+  req: Request
+): Promise<Response> {
+  const body = await parseJsonBody(req);
+  const msgObj =
+    typeof body.message === "object" && body.message !== null
+      ? (body.message as Record<string, unknown>)
+      : {};
+  const keyObj =
+    typeof msgObj.key === "object" && msgObj.key !== null
+      ? (msgObj.key as Record<string, unknown>)
+      : typeof body.key === "object" && body.key !== null
+        ? (body.key as Record<string, unknown>)
+        : {};
+
+  const messageId = String(
+    keyObj.id ?? msgObj.id ?? body.id ?? body.messageId ?? ""
+  ).trim();
+
+  if (!messageId) {
+    return Response.json(
+      {
+        status: 400,
+        error: "Bad Request",
+        message: "Message ID is required in message.key.id",
+      },
+      { status: 400 }
+    );
+  }
+
+  const msg = ctx.store.getMessage(messageId);
+  if (!msg) {
+    return Response.json(
+      {
+        status: 404,
+        error: "Not Found",
+        message: "Message not found",
+      },
+      { status: 404 }
+    );
+  }
+
+  const media = ctx.store.getMessageMedia(messageId);
+  if (!media || !media.data) {
+    return Response.json(
+      {
+        status: 404,
+        error: "Not Found",
+        message: "Media not found for this message",
+      },
+      { status: 404 }
+    );
+  }
+
+  const mediaType = msg.mediaType ? `${msg.mediaType}Message` : "audioMessage";
+  const fileName =
+    msg.mediaFilename ||
+    (msg.mediaType === "audio"
+      ? "voice-message.ogg"
+      : msg.mediaType === "image"
+        ? "image.png"
+        : msg.mediaType === "video"
+          ? "video.mp4"
+          : "document");
+  const mimetype =
+    msg.mediaMimetype || defaultMimetypeFor(msg.mediaType || "audio");
+
+  return Response.json({
+    status: 200,
+    mediaType,
+    fileName,
+    caption: msg.text || null,
+    size: {
+      fileLength: media.data.byteLength,
+    },
+    mimetype,
+    base64: media.data.toBase64(),
+  });
+}
+
+/**
+ * Handles `POST /chat/findMessages/:instance`, returning stored chat messages
+ * in the standard Evolution API message list format.
+ *
+ * @param ctx - Shared server context.
+ * @param req - Incoming HTTP request with `:instance` route parameter.
+ * @returns Evolution API JSON array of message objects.
+ */
+export async function handleFindMessagesPost(
+  ctx: ServerContext,
+  req: Request
+): Promise<Response> {
+  const instance =
+    "params" in req &&
+    typeof req.params === "object" &&
+    req.params !== null &&
+    "instance" in req.params
+      ? String((req.params as Record<string, unknown>).instance)
+      : ctx.store.getSettings().instanceName;
+  const messages = ctx.store.listMessages();
+  const settings = ctx.store.getSettings();
+
+  const formatted = messages.map((msg) => {
+    const isOutgoing = msg.direction === "outgoing";
+    return {
+      id: msg.id,
+      key: {
+        remoteJid: msg.remoteJid,
+        fromMe: !isOutgoing,
+        id: msg.id,
+      },
+      pushName: isOutgoing ? settings.pushName : instance,
+      messageType: msg.mediaType ? `${msg.mediaType}Message` : "conversation",
+      message: {
+        conversation: msg.text || "",
+        ...(msg.mediaType === "audio"
+          ? {
+              audioMessage: {
+                mimetype: msg.mediaMimetype || "audio/ogg",
+                ptt: true,
+              },
+            }
+          : {}),
+      },
+      messageTimestamp: msg.timestamp,
+      status: "DELIVERED",
+    };
+  });
+
+  return Response.json(formatted);
+}

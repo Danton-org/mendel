@@ -20,6 +20,8 @@ import {
   handleWebhookSetPost,
 } from "./handlers/instances";
 import {
+  handleFindMessagesPost,
+  handleGetBase64FromMediaMessagePost,
   handleSendButtonsPost,
   handleSendListPost,
   handleSendMediaEndpoint,
@@ -63,6 +65,8 @@ export {
   handleConnectionStateGet,
   handleEventsGet,
   handleFetchInstancesGet,
+  handleFindMessagesPost,
+  handleGetBase64FromMediaMessagePost,
   handleHealthGet,
   handleInstanceCreatePost,
   handleMediaGet,
@@ -163,6 +167,18 @@ export function createMendelServer(options: ServerOptions = {}) {
       "/chat/updateMessage/:instance": {
         POST: handleUpdateMessage.bind(null, ctx),
         PUT: handleUpdateMessage.bind(null, ctx),
+      },
+      "/chat/getBase64FromMediaMessage/:instance": {
+        POST: handleGetBase64FromMediaMessagePost.bind(null, ctx),
+      },
+      "/chat/getBase64FromMediaMessage": {
+        POST: handleGetBase64FromMediaMessagePost.bind(null, ctx),
+      },
+      "/chat/findMessages/:instance": {
+        POST: handleFindMessagesPost.bind(null, ctx),
+      },
+      "/chat/findMessages": {
+        POST: handleFindMessagesPost.bind(null, ctx),
       },
       "/message/sendButtons/:instance": {
         POST: handleSendButtonsPost.bind(null, ctx),

@@ -44,6 +44,7 @@ export function buildWebhookPayload(
 ): Record<string, unknown> {
   const messageObj: Record<string, unknown> = {};
   let messageType = "conversation";
+  const b64 = mediaBytes ? mediaBytes.toBase64() : undefined;
 
   if (msg.mediaType === "image") {
     messageType = "imageMessage";
@@ -51,9 +52,10 @@ export function buildWebhookPayload(
       mimetype: msg.mediaMimetype || "image/jpeg",
       caption: msg.text || "",
       url: `${serverUrl}/media/${msg.id}`,
+      ...(b64 ? { base64: b64 } : {}),
     };
-    if (mediaBytes) {
-      messageObj.base64 = mediaBytes.toBase64();
+    if (b64) {
+      messageObj.base64 = b64;
     }
   } else if (msg.mediaType === "video") {
     messageType = "videoMessage";
@@ -61,9 +63,10 @@ export function buildWebhookPayload(
       mimetype: msg.mediaMimetype || "video/mp4",
       caption: msg.text || "",
       url: `${serverUrl}/media/${msg.id}`,
+      ...(b64 ? { base64: b64 } : {}),
     };
-    if (mediaBytes) {
-      messageObj.base64 = mediaBytes.toBase64();
+    if (b64) {
+      messageObj.base64 = b64;
     }
   } else if (msg.mediaType === "audio") {
     messageType = "audioMessage";
@@ -71,9 +74,11 @@ export function buildWebhookPayload(
       mimetype: msg.mediaMimetype || "audio/ogg; codecs=opus",
       url: `${serverUrl}/media/${msg.id}`,
       ptt: true,
+      seconds: 5,
+      ...(b64 ? { base64: b64 } : {}),
     };
-    if (mediaBytes) {
-      messageObj.base64 = mediaBytes.toBase64();
+    if (b64) {
+      messageObj.base64 = b64;
     }
   } else if (msg.mediaType === "document") {
     messageType = "documentMessage";
@@ -82,9 +87,10 @@ export function buildWebhookPayload(
       caption: msg.text || "",
       fileName: msg.mediaFilename || "document",
       url: `${serverUrl}/media/${msg.id}`,
+      ...(b64 ? { base64: b64 } : {}),
     };
-    if (mediaBytes) {
-      messageObj.base64 = mediaBytes.toBase64();
+    if (b64) {
+      messageObj.base64 = b64;
     }
   } else if (replyMeta?.buttonId) {
     messageType = "buttonsResponseMessage";
@@ -136,12 +142,14 @@ export function buildWebhookPayload(
       messageTimestamp: msg.timestamp,
       instanceId: settings.instanceName,
       source: "web",
+      ...(b64 ? { base64: b64 } : {}),
     },
     destination: settings.webhookUrl,
     date_time: new Date(msg.timestamp * 1000).toISOString(),
     sender: msg.remoteJid,
     server_url: serverUrl,
     apikey: settings.apiKey,
+    ...(b64 ? { base64: b64 } : {}),
   };
 }
 

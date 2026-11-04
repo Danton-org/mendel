@@ -420,31 +420,55 @@ async function finishAndSendVoiceRecording() {
     return;
   }
 
-  const mimeType = recordedAudioBlob.type || "audio/ogg";
+  let mimeType = recordedAudioBlob.type || "audio/ogg";
+  if (mimeType.startsWith("video/")) {
+    mimeType = mimeType.replace(/^video\//, "audio/");
+  }
   let extension = "ogg";
   if (mimeType.includes("mp4")) {
     extension = "mp4";
   } else if (mimeType.includes("webm")) {
     extension = "webm";
+  } else if (mimeType.includes("opus") || mimeType.includes("ogg")) {
+    extension = "ogg";
   }
 
   const audioFile = new File([recordedAudioBlob], `voice-message.${extension}`, {
     type: mimeType,
   });
 
-  const fileInput = document.getElementById("media-input");
-  const chatForm = document.getElementById("chat-form");
+  const textInput = document.getElementById("message-text-input");
+  const caption = textInput && textInput.value ? textInput.value.trim() : "";
 
-  if (fileInput && typeof DataTransfer !== "undefined") {
-    const dataTransfer = new DataTransfer();
-    dataTransfer.items.add(audioFile);
-    fileInput.files = dataTransfer.files;
+  const formData = new FormData();
+  formData.append("media", audioFile, `voice-message.${extension}`);
+  formData.append("mediaType", "audio");
+  if (caption) {
+    formData.append("text", caption);
   }
 
   cancelVoiceRecording();
 
-  if (chatForm) {
-    htmx.trigger(chatForm, "submit");
+  try {
+    const response = await fetch("/ui/send", {
+      method: "POST",
+      body: formData,
+    });
+    if (response.ok) {
+      const html = await response.text();
+      const messagesContainer = document.getElementById("chat-messages");
+      if (messagesContainer) {
+        messagesContainer.innerHTML = html;
+        window.scrollToBottom(true);
+      }
+      if (textInput) {
+        textInput.value = "";
+      }
+      window.clearMediaSelection();
+      updateComposerButtons();
+    }
+  } catch (err) {
+    console.error("Failed to send voice recording:", err);
   }
 }
 
