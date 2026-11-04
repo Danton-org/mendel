@@ -6,7 +6,7 @@
     let
       inherit (nixpkgs) lib;
       forAllSystems = lib.genAttrs lib.systems.flakeExposed;
-      version = "2026.11.4";
+      version = "2026.11.4.1";
     in
     {
       packages = forAllSystems (
