@@ -9,7 +9,11 @@
 import { formatJid, type MediaType } from "../../db";
 import { getTranslator } from "../../i18n";
 import { renderHeaderStatus, renderMessages } from "../../ui";
-import { dispatchWebhook, type InteractiveReplyMeta } from "../../webhook";
+import {
+  dispatchPollVoteWebhook,
+  dispatchWebhook,
+  type InteractiveReplyMeta,
+} from "../../webhook";
 import type { ServerContext } from "../context";
 import { htmlResponse, inferMediaType } from "../helpers";
 
@@ -133,15 +137,34 @@ export async function handleUiSendInteractivePost(
     : undefined;
 
   const settings = ctx.store.getSettings();
-  const displayText =
-    text ||
-    (pollOptions && pollOptions.length > 0
-      ? pollOptions.join(", ")
-      : undefined) ||
-    buttonId ||
-    rowId ||
-    pollOption ||
-    "";
+  const origin = new URL(req.url).origin;
+
+  // Poll votes update the poll in-place without inserting a new message bubble
+  if (pollMessageId && (pollOptions || pollOption)) {
+    const votes = pollOptions ?? (pollOption ? [pollOption] : []);
+    const pollMsg = ctx.store.getMessage(pollMessageId);
+    if (pollMsg?.interactive && pollMsg.interactive.type === "poll") {
+      ctx.store.updateInteractivePayload(pollMessageId, {
+        ...pollMsg.interactive,
+        userVotes: votes,
+      });
+    }
+
+    ctx.bumpVersion();
+    void dispatchPollVoteWebhook(
+      ctx.store,
+      pollMessageId,
+      votes,
+      origin,
+      ctx.bumpVersion
+    );
+
+    return htmlResponse(
+      renderMessages(ctx.store.listMessages(), settings, getTranslator(req))
+    );
+  }
+
+  const displayText = text || buttonId || rowId || "";
 
   const msg = ctx.store.insertMessage({
     instance: settings.instanceName,
@@ -153,13 +176,9 @@ export async function handleUiSendInteractivePost(
 
   ctx.bumpVersion();
 
-  const origin = new URL(req.url).origin;
   const replyMeta: InteractiveReplyMeta = {
     buttonId,
     rowId,
-    pollOption: pollOption ?? pollOptions?.[0],
-    pollOptions,
-    pollMessageId,
   };
   void dispatchWebhook(ctx.store, msg.id, origin, ctx.bumpVersion, replyMeta);
 

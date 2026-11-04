@@ -444,6 +444,10 @@ describe("mendel server", () => {
     expect(singleVoteRes.status).toBe(200);
     const singleVoteHtml = await singleVoteRes.text();
     expect(singleVoteHtml).toContain("Pizza");
+    expect(singleVoteHtml).toContain("check_circle");
+    expect(singleVoteHtml).toContain("poll-option-btn voted");
+    // Ensure in-place vote does NOT create a separate chat bubble
+    expect(mendel.store.listMessages().length).toBe(1);
 
     await Bun.sleep(50);
     expect(receivedWebhooks.length).toBeGreaterThanOrEqual(1);
@@ -508,7 +512,11 @@ describe("mendel server", () => {
     );
     expect(multiVoteRes.status).toBe(200);
     const multiVoteHtml = await multiVoteRes.text();
-    expect(multiVoteHtml).toContain("Opção 1, Opção 2");
+    expect(multiVoteHtml).toContain("poll-checkbox-label voted");
+    expect(multiVoteHtml).toContain("checked");
+    expect(multiVoteHtml).toContain("poll-check-icon");
+    // Ensure in-place vote does NOT create a separate chat bubble
+    expect(mendel.store.listMessages().length).toBe(2);
 
     await Bun.sleep(50);
     const multiWh = receivedWebhooks[receivedWebhooks.length - 1]!;

@@ -40,6 +40,7 @@ export type InteractivePayload =
       question: string;
       selectableCount: number;
       options: string[];
+      userVotes?: string[];
     };
 
 /**
@@ -520,6 +521,26 @@ export class MendelStore {
       direction: "incoming",
       text,
     });
+  }
+
+  /**
+   * Updates the interactive payload of an existing message (e.g. recording poll votes in-place).
+   *
+   * @param id - Target message ID.
+   * @param interactive - Updated interactive payload.
+   * @returns Updated {@link ChatMessage} or `null` if not found.
+   */
+  updateInteractivePayload(
+    id: string,
+    interactive: InteractivePayload
+  ): ChatMessage | null {
+    const existing = this.getMessage(id);
+    if (!existing) return null;
+    const interactiveJson = JSON.stringify(interactive);
+    this.db
+      .prepare("UPDATE messages SET interactive_json = ? WHERE id = ?")
+      .run(interactiveJson, id);
+    return this.getMessage(id);
   }
 
   /**

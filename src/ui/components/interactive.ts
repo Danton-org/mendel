@@ -82,6 +82,7 @@ export function renderPollInteractive(
   t: TFunction
 ): string {
   const isMultiple = poll.selectableCount > 1 || poll.selectableCount === 0;
+  const userVotes = new Set(poll.userVotes || []);
 
   if (isMultiple) {
     const hintText =
@@ -90,17 +91,25 @@ export function renderPollInteractive(
         : t("selectMultiple");
 
     const optionsHtml = poll.options
-      .map(
-        (opt) => `
-        <label class="checkbox poll-checkbox-label">
-          <input type="checkbox" name="pollOption" value="${Bun.escapeHTML(opt)}" class="poll-checkbox" />
+      .map((opt) => {
+        const isChecked = userVotes.has(opt);
+        return `
+        <label class="checkbox poll-checkbox-label ${isChecked ? "voted" : ""}">
+          <input
+            type="checkbox"
+            name="pollOption"
+            value="${Bun.escapeHTML(opt)}"
+            class="poll-checkbox"
+            ${isChecked ? "checked" : ""}
+          />
           <span>${Bun.escapeHTML(opt)}</span>
-        </label>`
-      )
+          ${isChecked ? '<i class="poll-check-icon">check</i>' : ""}
+        </label>`;
+      })
       .join("");
 
     return `
-      <div class="poll-card">
+      <div class="poll-card" id="poll-${Bun.escapeHTML(msgId)}">
         <div class="poll-hint">
           <i>checklist</i>
           <span>${Bun.escapeHTML(hintText)}</span>
@@ -111,7 +120,7 @@ export function renderPollInteractive(
             ${optionsHtml}
           </div>
           <div class="poll-actions">
-            <button type="submit" class="small primary round poll-vote-btn" disabled>
+            <button type="submit" class="small primary round poll-vote-btn" ${userVotes.size > 0 ? "" : "disabled"}>
               <i>how_to_vote</i>
               <span>${Bun.escapeHTML(t("vote"))}</span>
             </button>
@@ -122,21 +131,38 @@ export function renderPollInteractive(
   }
 
   const items = poll.options
-    .map((opt) =>
-      renderInteractiveButton(
-        { pollMessageId: msgId, pollOption: opt, text: opt },
-        `<i>how_to_vote</i><span>${Bun.escapeHTML(opt)}</span>`
-      )
-    )
+    .map((opt) => {
+      const isSelected = userVotes.has(opt);
+      const icon = isSelected ? "check_circle" : "radio_button_unchecked";
+      const btnClass = isSelected
+        ? "small primary round poll-option-btn voted"
+        : "small border round poll-option-btn";
+      const vals = Bun.escapeHTML(
+        JSON.stringify({ pollMessageId: msgId, pollOption: opt })
+      );
+      return `
+        <button
+          type="button"
+          class="${btnClass}"
+          hx-post="/ui/send-interactive"
+          hx-target="#chat-messages"
+          hx-swap="innerHTML"
+          hx-vals='${vals}'
+        >
+          <i>${icon}</i>
+          <span>${Bun.escapeHTML(opt)}</span>
+        </button>
+      `.trim();
+    })
     .join("");
 
   return `
-    <div class="poll-card">
+    <div class="poll-card" id="poll-${Bun.escapeHTML(msgId)}">
       <div class="poll-hint">
         <i>how_to_vote</i>
         <span>${Bun.escapeHTML(t("selectOne"))}</span>
       </div>
-      <div class="interactive-options">
+      <div class="poll-options-single">
         ${items}
       </div>
     </div>

@@ -5,7 +5,7 @@
  * @packageDocumentation
  */
 
-import type { ChatMessage, MendelSettings, MendelStore } from "./db";
+import { formatJid, type ChatMessage, type MendelSettings, type MendelStore } from "./db";
 
 /**
  * Optional metadata describing an interactive button, list row, or poll vote
@@ -221,6 +221,96 @@ export async function dispatchWebhook(
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
     store.updateWebhookStatus(messageId, "failed", errMsg);
+    onStatusChange?.();
+    return { ok: false, error: errMsg };
+  }
+}
+
+/**
+ * Dispatches an Evolution API `messages.upsert` webhook for an in-place poll vote
+ * without creating a separate outgoing chat message.
+ *
+ * @param store - Database store instance.
+ * @param pollMessageId - ID of the poll message being voted on.
+ * @param selectedOptions - Array of option strings voted on.
+ * @param serverUrl - Origin URL of the `mendel` server.
+ * @param onStatusChange - Optional callback invoked after status changes.
+ * @returns Result object indicating whether webhook delivery succeeded.
+ */
+export async function dispatchPollVoteWebhook(
+  store: MendelStore,
+  pollMessageId: string,
+  selectedOptions: string[],
+  serverUrl: string,
+  onStatusChange?: () => void
+): Promise<{ ok: boolean; status?: number; error?: string }> {
+  const settings = store.getSettings();
+  if (!settings.webhookUrl) {
+    return { ok: false, error: "No webhook URL configured" };
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const voteEventId = Bun.randomUUIDv7();
+  const senderJid = formatJid(settings.senderNumber);
+
+  const payload: Record<string, unknown> = {
+    event: "messages.upsert",
+    instance: settings.instanceName,
+    data: {
+      key: {
+        remoteJid: senderJid,
+        fromMe: false,
+        id: voteEventId,
+      },
+      pushName: settings.pushName,
+      message: {
+        pollUpdateMessage: {
+          pollCreationMessageKey: {
+            id: pollMessageId,
+          },
+          vote: {
+            selectedOptions,
+          },
+        },
+      },
+      messageType: "pollUpdateMessage",
+      messageTimestamp: now,
+      instanceId: settings.instanceName,
+      source: "web",
+    },
+    destination: settings.webhookUrl,
+    date_time: new Date(now * 1000).toISOString(),
+    sender: senderJid,
+    server_url: serverUrl,
+    apikey: settings.apiKey,
+  };
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (settings.apiKey) {
+    headers["apikey"] = settings.apiKey;
+    headers["x-api-key"] = settings.apiKey;
+  }
+
+  try {
+    const response = await fetch(settings.webhookUrl, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+
+    if (response.ok) {
+      onStatusChange?.();
+      return { ok: true, status: response.status };
+    }
+
+    const errText = (await response.text().catch(() => "")).slice(0, 200);
+    const errMsg = `HTTP ${response.status}${errText ? `: ${errText}` : ""}`;
+    onStatusChange?.();
+    return { ok: false, status: response.status, error: errMsg };
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err);
     onStatusChange?.();
     return { ok: false, error: errMsg };
   }
