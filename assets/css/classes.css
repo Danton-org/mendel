@@ -216,11 +216,13 @@ audio.message-media {
 }
 
 .poll-card {
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   margin-top: 0.6rem;
   max-width: 100%;
+  width: 100%;
 }
 
 .poll-hint {
@@ -247,38 +249,63 @@ audio.message-media {
 }
 
 .poll-options {
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  max-width: 100%;
   width: 100%;
 }
 
 .poll-options-single {
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  max-width: 100%;
   width: 100%;
 }
 
 .poll-option-btn {
   align-items: center;
+  block-size: auto !important;
+  box-sizing: border-box !important;
   display: flex;
+  font-weight: 500;
   gap: 0.5rem;
+  height: auto !important;
   justify-content: flex-start;
   margin: 0 !important;
-  padding: 0.5rem 0.75rem;
+  max-width: 100%;
+  min-height: 2.25rem;
+  padding: 0.45rem 0.75rem !important;
   text-align: left;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
   width: 100%;
 }
 
 .poll-option-btn i {
   --_size: 1.15rem;
+  flex-shrink: 0;
   font-size: 1.15rem;
 }
 
+.poll-option-btn span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-word;
+}
+
 .poll-option-btn.voted {
-  font-weight: 600;
+  background: var(--surface-container-high) !important;
+  border-color: var(--primary) !important;
+  color: var(--on-surface) !important;
+}
+
+.poll-option-btn.voted i {
+  color: var(--primary);
 }
 
 .poll-checkbox-label {
@@ -286,10 +313,14 @@ audio.message-media {
   background: var(--surface-container-low);
   border: 1px solid var(--outline-variant);
   border-radius: 0.6rem;
+  box-sizing: border-box !important;
   cursor: pointer;
   display: flex !important;
+  font-weight: 400;
   margin: 0;
-  padding: 0.4rem 0.65rem;
+  max-width: 100%;
+  min-height: 2.25rem;
+  padding: 0.45rem 0.75rem;
   transition: background 0.15s ease, border-color 0.15s ease;
   user-select: none;
   width: 100%;
@@ -303,18 +334,21 @@ audio.message-media {
 .poll-checkbox-label.voted {
   background: var(--surface-container-high);
   border-color: var(--primary);
-  font-weight: 500;
 }
 
 .poll-check-icon {
   --_size: 1.15rem;
   color: var(--primary);
+  flex-shrink: 0;
   font-size: 1.15rem;
   margin-left: auto;
 }
 
 .poll-checkbox-label span {
   flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
   word-break: break-word;
 }
 

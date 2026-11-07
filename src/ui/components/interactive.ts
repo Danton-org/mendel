@@ -134,9 +134,7 @@ export function renderPollInteractive(
     .map((opt) => {
       const isSelected = userVotes.has(opt);
       const icon = isSelected ? "check_circle" : "radio_button_unchecked";
-      const btnClass = isSelected
-        ? "small primary round poll-option-btn voted"
-        : "small border round poll-option-btn";
+      const btnClass = `small border round poll-option-btn ${isSelected ? "voted" : ""}`.trim();
       const vals = Bun.escapeHTML(
         JSON.stringify({ pollMessageId: msgId, pollOption: opt })
       );
