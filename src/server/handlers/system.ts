@@ -28,7 +28,7 @@ export function handleRootGet(
     return Response.json({
       status: 200,
       message: "Welcome to the Mendel Evolution API, it is working!",
-      version: "2026.11.7",
+      version: "2026.11.7.1",
     });
   }
   return htmlResponse(
@@ -48,7 +48,7 @@ export function handleRootGet(
 export function handleHealthGet(): Response {
   return Response.json({
     status: "ok",
-    version: "2026.11.7",
+    version: "2026.11.7.1",
   });
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "mendel",
-  "version": "2026.11.7",
+  "version": "2026.11.7.1",
   "description": "Chat interface for testing Evolution API-based programs",
   "type": "module",
   "private": true,
