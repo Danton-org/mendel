@@ -42,6 +42,32 @@ window.toggleTheme = function () {
 };
 
 /**
+ * Tracks whether `#chat-scroll` was near the bottom before DOM updates or swaps.
+ */
+let wasAtBottom = true;
+
+/**
+ * Checks whether `#chat-scroll` is currently scrolled within threshold of the bottom.
+ *
+ * @param threshold - Distance in pixels from bottom considered "at the bottom" (default 120).
+ * @returns Whether the user is near the bottom.
+ */
+function isAtBottom(threshold = 120) {
+  const container = document.getElementById("chat-scroll");
+  if (!container) return true;
+  const dist =
+    container.scrollHeight - container.scrollTop - container.clientHeight;
+  return dist <= threshold;
+}
+
+/**
+ * Updates the tracked `wasAtBottom` flag based on current scroll position.
+ */
+function updateWasAtBottom() {
+  wasAtBottom = isAtBottom(120);
+}
+
+/**
  * Scrolls the `#chat-scroll` message feed to the bottom when near the end or
  * when `force` is `true`.
  *
@@ -50,10 +76,12 @@ window.toggleTheme = function () {
 window.scrollToBottom = function (force = false) {
   const container = document.getElementById("chat-scroll");
   if (!container) return;
-  const distanceFromBottom =
-    container.scrollHeight - container.scrollTop - container.clientHeight;
-  if (force || distanceFromBottom < 220) {
+  if (force || wasAtBottom) {
     container.scrollTop = container.scrollHeight;
+    wasAtBottom = true;
+    requestAnimationFrame(() => {
+      container.scrollTop = container.scrollHeight;
+    });
   }
 };
 
@@ -480,6 +508,23 @@ document.addEventListener("DOMContentLoaded", () => {
   window.scrollToBottom(true);
   updateComposerButtons();
 
+  const scrollContainer = document.getElementById("chat-scroll");
+  if (scrollContainer) {
+    scrollContainer.addEventListener("scroll", updateWasAtBottom, {
+      passive: true,
+    });
+  }
+
+  const messagesContainer = document.getElementById("chat-messages");
+  if (messagesContainer && typeof ResizeObserver !== "undefined") {
+    const ro = new ResizeObserver(() => {
+      if (wasAtBottom) {
+        window.scrollToBottom(true);
+      }
+    });
+    ro.observe(messagesContainer);
+  }
+
   const fileInput = document.getElementById("media-input");
   if (fileInput) {
     fileInput.addEventListener("change", () => {
@@ -603,6 +648,12 @@ document.addEventListener("DOMContentLoaded", () => {
   connectSSE();
 });
 
+document.addEventListener("htmx:beforeSwap", (evt) => {
+  if (evt.detail.target && evt.detail.target.id === "chat-messages") {
+    updateWasAtBottom();
+  }
+});
+
 document.addEventListener("htmx:afterRequest", (evt) => {
   const elt = evt.detail.elt;
   if (elt && elt.id === "chat-form" && evt.detail.successful) {
@@ -619,6 +670,8 @@ document.addEventListener("htmx:afterRequest", (evt) => {
 
 document.addEventListener("htmx:afterSwap", (evt) => {
   if (evt.detail.target && evt.detail.target.id === "chat-messages") {
-    window.scrollToBottom(false);
+    if (wasAtBottom) {
+      window.scrollToBottom(true);
+    }
   }
 });
