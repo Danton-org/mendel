@@ -345,12 +345,14 @@ audio.message-media {
   border-color: var(--outline);
 }
 
+.poll-checkbox-label:has(.poll-checkbox:checked),
 .poll-checkbox-label.voted {
   background-color: var(--primary-container) !important;
   border-color: var(--primary) !important;
   color: var(--on-primary-container) !important;
 }
 
+.poll-checkbox-label:has(.poll-checkbox:checked):hover,
 .poll-checkbox-label.voted:hover {
   background-color: var(--primary-container) !important;
   border-color: var(--primary) !important;
@@ -360,9 +362,15 @@ audio.message-media {
 .poll-check-icon {
   --_size: 1.15rem;
   color: var(--primary);
+  display: none;
   flex-shrink: 0;
   font-size: 1.15rem;
   margin-left: auto;
+}
+
+.poll-checkbox-label:has(.poll-checkbox:checked) .poll-check-icon,
+.poll-checkbox-label.voted .poll-check-icon {
+  display: inline-flex;
 }
 
 .poll-checkbox-label span {
@@ -373,6 +381,7 @@ audio.message-media {
   word-break: break-word;
 }
 
+.poll-checkbox-label:has(.poll-checkbox:checked) span,
 .poll-checkbox-label.voted span {
   color: var(--on-primary-container) !important;
   font-weight: 500;

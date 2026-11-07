@@ -103,7 +103,7 @@ export function renderPollInteractive(
             ${isChecked ? "checked" : ""}
           />
           <span>${Bun.escapeHTML(opt)}</span>
-          ${isChecked ? '<i class="poll-check-icon">check</i>' : ""}
+          <i class="poll-check-icon">check</i>
         </label>`;
       })
       .join("");

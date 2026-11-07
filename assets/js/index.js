@@ -593,6 +593,16 @@ document.addEventListener("DOMContentLoaded", () => {
       target.checked = false;
     }
 
+    const allBoxes = form.querySelectorAll(".poll-checkbox");
+    for (const box of allBoxes) {
+      if (box instanceof HTMLInputElement) {
+        const label = box.closest(".poll-checkbox-label");
+        if (label) {
+          label.classList.toggle("voted", box.checked);
+        }
+      }
+    }
+
     const submitBtn = form.querySelector(".poll-vote-btn");
     if (submitBtn instanceof HTMLButtonElement) {
       const remainingChecked = form.querySelectorAll(
